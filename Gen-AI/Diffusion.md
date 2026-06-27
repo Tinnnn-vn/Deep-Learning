@@ -45,12 +45,42 @@ Tóm lại Diffusion Model gồm hai quá trình:
 1. Quá trình Khuếch Tán Thuận (forward diffusion): dần dần thêm nhiễu vào dữ liệu đầu vào
 2. Quá trình Khử Nhiễu Ngược (reverse denoising): học cách tạo ra dữ liệu thông qua việc khử nhiễu
 
-Các công thức toán học mà bạn sẽ cần nắm vững trong hướng dẫn này:
+Các khái niệm & công thức toán học mà bạn sẽ cần nắm vững trong hướng dẫn này:
 
 - Khuếch Tán Thuận (forward diffusion): $$\mathbf{x}_t = \sqrt{\bar{\alpha}_t} \mathbf{x}_0 + \sqrt{1 - \bar{\alpha}_t} \boldsymbol{\epsilon}$$
 
 - Khử Nhiễu Ngược (reverse denoising): $$x_{t-1} = \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{1 - \alpha_t}{\sqrt{1 - \bar{\alpha}t}} \epsilon\theta(x_t, t) \right) + \sigma_t z$$
 
-- Dự đoán nhiễu: $$\epsilon_\theta(x_t, t)$$
+- Dự đoán nhiễu (Noise Prediction): $$\epsilon_\theta(x_t, t)$$
 
 - Loss thường dùng là Mean Squared Error (MSE): $$L = \mathbb{E}{x_0, t, \epsilon} \left[ | \epsilon - \epsilon\theta(x_t, t) |^2 \right]$$
+
+- Kiến trúc SimpleUNet, SinusoidalPositionEmbeddings và cách đưa thông tin thời gian vào mô hình (conditioning).
+
+Nhìn các công thức toán học có lẽ bạn sẽ cảm thấy khô khan và bối rối.
+
+ĐỪNG LO! Chúng ta sẽ cùng mổ xẻ từng phần một của công thức & mã PyTorch trong các chương sau nhé.
+
+### II. Viết mã bằng PyTorch
+### 2.1 import thư viện:
+Đây là các thư viện Deep Learning trong Python.
+```python
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Thiết bị đang dùng:", device)
+```
+| Thành phần | Nó làm gì? | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| `torch` | Thư viện chính của PyTorch, dùng để tạo tensor và tính toán. | Đây là "bộ não toán học" của chương trình. |
+| `nn` | Chứa các lớp để xây dựng neural network. | Sau này ta dùng để tạo mô hình dự đoán nhiễu. |
+| `DataLoader` | Chia dataset thành từng batch nhỏ. | Giống như người phát từng xấp ảnh cho mô hình học. |
+| `datasets` | Cung cấp các bộ dữ liệu phổ biến như MNIST, CIFAR-10. | Giúp ta tải dữ liệu nhanh mà không cần tự chuẩn bị thủ công. |
+| `transforms` | Biến đổi ảnh trước khi đưa vào mô hình. | Dùng để đổi ảnh thành tensor và chuẩn hóa pixel. |
+| `matplotlib.pyplot` | Dùng để vẽ và hiển thị ảnh. | Giúp ta nhìn thấy ảnh gốc và ảnh bị thêm nhiễu. |
+| `device` | Dùng GPU nếu có. | Chạy nhanh hơn khi huấn luyện mô hình. |
+
