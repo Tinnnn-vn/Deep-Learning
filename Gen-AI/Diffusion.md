@@ -209,3 +209,122 @@ Shape labels là 64 nghĩa là mỗi ảnh có một nhãn tương ứng (ảnh 
 Lý do là mô hình của ta đang học sinh ảnh theo kiểu unconditional generation, tức là tạo ảnh không cần điều kiện nhãn.
 
 Trong bài toán phân loại ảnh, label rất quan trọng. Nhưng trong Diffusion Model cơ bản, nhiệm vụ của mô hình không phải là phân loại ảnh mà là dự đoán nhiễu.
+### 2.4 Khuếch Tán Thuận (forward diffusion): Giải thích toán học
+Khuếch tán thuân là quá trình phá hủy một hình ảnh bằng cách thêm nhiễu, từng bước một. Dưới đây là công thức cho một bước đơn lẻ:
+
+$$x_t = \sqrt{\alpha_t}x_{t-1} + \sqrt{\beta_t}\epsilon$$
+
+| Thuật ngữ | Ý nghĩa kỹ thuật | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| $x_t$ | Ảnh bị nhiễu tại bước $t$ | Kết quả đầu ra nhiễu hơn một chút so với bước trước |
+| $x_{t-1}$ | Ảnh thu được từ bước trước đó | Đối tượng dữ liệu mà ta đang tiến hành làm nhiễu |
+| $\epsilon$ | Nhiễu Gaussian nguyên bản $\sim N(0, 1)$ | Thành phần nhiễu ngẫu nhiên thuần túy |
+| $\beta_t$ | Phương sai của nhiễu tại bước $t$ | Lượng nhiễu sẽ được thêm vào (rất nhỏ, ví dụ: 0.0001 đến 0.02) |
+| $\alpha_t = 1 - \beta_t$ | Tỷ lệ giữ lại tín hiệu ảnh gốc | Lượng thông tin của ảnh bước trước được giữ lại (gần bằng 1) |
+| $\sqrt{\alpha_t}$ | Hệ số thu nhỏ (scale) của ảnh | Ta giảm nhẹ kích thước giá trị pixel của ảnh gốc... |
+| $\sqrt{\beta_t}$ | Hệ số tỷ lệ (scale) của nhiễu | ...và cộng thêm vào một lượng nhiễu nhỏ tương ứng |
+
+**Tại sao lại dùng căn bậc hai?** Chúng ta đang làm việc với *phương sai* (variance), chứ không phải *độ lệch chuẩn* (standard deviation). Khi bạn nhân một biến ngẫu nhiên với một hệ số $c$, phương sai của nó sẽ được nhân lên với $c^2$. Vì vậy, để thêm nhiễu với phương sai $\beta_t$, chúng ta phải nhân nó với hệ số $\sqrt{\beta_t}$. Việc sử dụng các căn bậc hai này nhằm đảm bảo tổng phương sai luôn được kiểm soát ở mức ổn định: $(\sqrt{\alpha_t})^2 + (\sqrt{\beta_t})^2 = \alpha_t + \beta_t = 1$
+
+### Lịch trình phương sai - Variance Schedule ($\beta_t$)
+
+Chìa khóa của quá trình khuếch tán tiến (forward process) chính là **lịch trình phương sai** (variance schedule), ký hiệu là $\beta_t$ (beta). Lịch trình này quy định chính xác lượng nhiễu mà chúng ta sẽ thêm vào tại mỗi bước thời gian $t$. Trong bài báo gốc về DDPM, đây là một lịch trình tuyến tính (linear schedule) đơn giản:
+
+* Tại $t = 1$, chúng ta thêm một lượng nhiễu cực kỳ nhỏ: $\beta_1 = 0.0001$
+* Tại $t = 1000$, chúng ta thêm nhiều nhiễu hơn: $\beta_{1000} = 0.02$
+* Các giá trị của $\beta_2, \beta_3, \dots$ được phân bổ cách đều nhau giữa hai điểm mút này.
+
+Điều này có nghĩa là chúng ta bắt đầu bằng việc chỉ thêm một lượng nhiễu nhẹ như "tiếng thì thầm", và tăng dần lượng nhiễu ở mỗi bước tiếp theo.
+
+Từ $\beta_t$, chúng ta suy ra được $\alpha_t = 1 - \beta_t$. Nếu $\beta_t$ là tỷ lệ nhiễu, thì $\alpha_t$ chính là **tỷ lệ tín hiệu** (signal rate)—cho biết lượng thông tin của bức ảnh trước đó được giữ lại bao nhiêu. Vì $\beta_t$ luôn rất nhỏ, nên $\alpha_t$ sẽ luôn gần bằng 1 (ví dụ: 0.9999).
+
+### Vấn đề: Quá trình này rất chậm
+
+Để thu được một bức ảnh bị nhiễu $x_t$ từ ảnh gốc $x_0$, theo lý thuyết chúng ta sẽ phải áp dụng công thức tuần tự $t$ lần:
+
+$$x_0 \rightarrow x_1 \rightarrow x_2 \rightarrow \dots \rightarrow x_t$$
+
+Với $t = 500$, điều đó đồng nghĩa với việc phải thực hiện 500 thao tác tuần tự liên tiếp. Điều này sẽ khiến cho việc huấn luyện mô hình trở nên vô cùng chậm chạp và tốn thời gian.
+
+### Lối đi tắt (The Shortcut)
+
+Hãy cùng xây dựng một công thức giúp chúng ta "nhảy" trực tiếp từ ảnh gốc $x_0$ sang ảnh bị nhiễu $x_t$. Bắt đầu với công thức biến đổi 1 bước và khai triển nó:
+
+$$x_1 = \sqrt{\alpha_1}x_0 + \sqrt{\beta_1}\epsilon_1$$
+
+$$x_2 = \sqrt{\alpha_2}x_1 + \sqrt{\beta_2}\epsilon_2$$
+
+Thay thế giá trị của $x_1$ vào phương trình tính $x_2$:
+
+$$x_2 = \sqrt{\alpha_2}\left( \sqrt{\alpha_1}x_0 + \sqrt{\beta_1}\epsilon_1 \right) + \sqrt{\beta_2}\epsilon_2$$
+
+$$= \sqrt{\alpha_1\alpha_2}x_0 + \sqrt{\alpha_2\beta_1}\epsilon_1 + \sqrt{\beta_2}\epsilon_2$$
+
+Đây là điểm mấu chốt quan trọng: khi bạn cộng hai biến ngẫu nhiên Gaussian độc lập với nhau, kết quả thu được cũng là một biến Gaussian với phương sai bằng tổng phương sai của hai biến thành phần. Do đó, hai số hạng chứa nhiễu được gộp lại như sau:
+
+$$\sqrt{\alpha_2\beta_1}\epsilon_1 + \sqrt{\beta_2}\epsilon_2 \sim \mathcal{N}(0, \alpha_2\beta_1 + \beta_2)$$
+
+Vì $\beta_1 = 1 - \alpha_1$, chúng ta có thể rút gọn biểu thức phương sai: $\alpha_2\beta_1 + \beta_2 = \alpha_2(1 - \alpha_1) + (1 - \alpha_2) = 1 - \alpha_1\alpha_2$
+
+Vì vậy, ta có thể viết lại phương trình thành: 
+
+$$x_2 = \sqrt{\alpha_1\alpha_2}x_0 + \sqrt{1 - \alpha_1\alpha_2}\epsilon$$
+
+---
+
+Quy luật đã quá rõ ràng. Tiếp tục khai triển này cho đến bước thời gian $t$, ta thu được:
+
+$$x_t = \sqrt{\bar{\alpha}_t}x_0 + \sqrt{1 - \bar{\alpha}_t}\epsilon$$
+
+Trong đó, $\bar{\alpha}_t = \alpha_1 \times \alpha_2 \times \dots \times \alpha_t$ chính là tích lũy (cumulative product).
+
+Đây là phương trình quan trọng bậc nhất đối với quá trình khuếch tán tiến (forward process). Hãy cùng phân tích chi tiết các thành phần:
+
+* $x_0$ là bức ảnh sạch, ảnh gốc ban đầu của chúng ta.
+* $\epsilon$ là một mẫu nhiễu Gaussian nguyên bản duy nhất.
+* $\bar{\alpha}_t$ (alpha-bar) là tích lũy: $\bar{\alpha}_t = \alpha_1 \times \alpha_2 \times \dots \times \alpha_t$
+
+Số hạng $\bar{\alpha}_t$ cho biết lượng tín hiệu của ảnh gốc còn sót lại bao nhiêu tại bước thời gian $t$. Khi $t$ tăng dần, $\bar{\alpha}_t$ giảm dần từ $1.0$ về $0.0$—đồng nghĩa với việc tín hiệu ảnh gốc sẽ nhạt nhòa dần cho đến khi chỉ còn lại nhiễu hoàn toàn.
+
+Công thức này thực chất chỉ là một phép nhân tổng trọng số: chúng ta lấy một lượng $\sqrt{\bar{\alpha}_t}$ của ảnh gốc và cộng thêm một lượng $\sqrt{1 - \bar{\alpha}_t}$ của nhiễu thuần túy. Khi $t$ nhỏ, chúng ta giữ lại hầu hết thông tin của bức ảnh. Khi $t$ lớn, chúng ta hầu như không giữ lại gì ngoài nhiễu.
+
+"Lối đi tắt" này là yếu tố cốt lõi giúp quá trình huấn luyện đạt hiệu quả cao. Chúng ta có thể tạo ngay lập tức một mẫu huấn luyện $(x_t, \epsilon)$ cho bất kỳ bước thời gian $t$ ngẫu nhiên nào mà không cần phải thực hiện qua vòng lặp tuần tự. Trong phần tiếp theo, chúng ta sẽ chuyển công thức này trực tiếp thành mã nguồn PyTorch.
+
+### Triển khai mã nguồn
+Chúng ta cần triển khai công thức này trong PyTorch:
+
+$$x_t = \sqrt{\bar{\alpha}_t}x_0 + \sqrt{1 - \bar{\alpha}_t}\epsilon$$
+
+Nhìn vào công thức này, chúng ta cần ba thành phần:
+
+1. $\bar{\alpha}_t$ — tỷ lệ tín hiệu tích lũy, được tính toán trước cho tất cả các bước thời gian (timesteps).
+2. $x_0$ — bức ảnh sạch (đầu vào).
+3. $\epsilon$ — nhiễu Gaussian nguyên bản (chúng ta sẽ lấy mẫu ngẫu nhiên trực tiếp trong quá trình chạy).
+
+Vì $\bar{\alpha}_t$ chỉ phụ thuộc vào bước thời gian (không phụ thuộc vào bức ảnh), chúng ta có thể tính toán trước nó một lần và tái sử dụng nhiều lần. Mã triển khai của chúng ta sẽ gồm hai phần:
+
+1. Tính toán trước các lịch trình nhiễu ($\beta_t, \alpha_t, \bar{\alpha}_t$).
+2. Hàm "lối đi tắt" (shortcut) để tạo ra một bức ảnh bị nhiễu $x_t$ từ bất kỳ ảnh gốc $x_0$ và bước thời gian $t$ nào được cho sẵn.
+
+### Phần 1: Tính toán trước các Lịch trình trong `Diffusion.__init__`
+
+Hãy nhớ lại rằng $\bar{\alpha}_t = \alpha_1 \times \alpha_2 \times \dots \times \alpha_t$, trong đó $\alpha_t = 1 - \beta_t$. Công việc chúng ta cần làm là:
+
+1. Tạo lịch trình cho $\beta_t$ (các giá trị phân bổ cách đều nhau theo đường tuyến tính).
+2. Tính $\alpha_t = 1 - \beta_t$.
+3. Tính $\bar{\alpha}_t$ dưới dạng tích lũy của $\alpha$.
+
+Vì đây là các hằng số cố định, chúng ta sẽ tính toán chúng một lần duy nhất khi khởi tạo mô hình (initialization):
+
+```python
+class Diffusion(nn.Module):
+    def __init__(self, config: DiffusionConfig):
+        super().__init__()
+        self.config = config
+        self.model = SimpleUNet(config).to(config.device)
+
+        # Tính toán trước các thành phần của lịch trình nhiễu
+        self.beta = torch.linspace(config.beta_start, config.beta_end, config.timesteps).to(config.device)
+        self.alpha = 1. - self.beta
+        self.alpha_hat = torch.cumprod(self.alpha, dim=0)
+```
