@@ -730,15 +730,15 @@ Với `down_channels` = `(32, 64, 128, 256, 512)`. Ta tạo ra 4 block:
 
 **Giải thích phần đường lên `self.ups`**
 ```python
-        self.ups = nn.ModuleList([
-            Block(
-                up_channels[i],
-                up_channels[i + 1],
-                config.time_emb_dim,
-                up=True,
-            )
-            for i in range(len(up_channels) - 1)
-        ])
+self.ups = nn.ModuleList([
+    Block(
+        up_channels[i],
+        up_channels[i + 1],
+        config.time_emb_dim,
+        up=True,
+    )
+    for i in range(len(up_channels) - 1)
+])
 ```
 
 | Thành phần | Nó làm gì? | Trực giác |
@@ -761,11 +761,11 @@ Với `up_channels` = `(512, 256, 128, 64, 32)`. Ta tạo ra 4 block:
 
 **Giải thích phần `output`**
 ```python
-        self.output = nn.Conv2d(
-            up_channels[-1],
-            config.in_channels,
-            kernel_size=1,
-        )
+self.output = nn.Conv2d(
+    up_channels[-1],
+    config.in_channels,
+    kernel_size=1,
+)
 ```
 
 | Thành phần | Nó làm gì? |
@@ -877,16 +877,26 @@ U-Net phù hợp vì nó có hai phần:
 
 Sau khi đã nắm được cấu trúc tổng thể của U-Net, bước tiếp theo là đi sâu vào thành phần cốt lõi của nó – các khối (block) – và tìm hiểu cách chúng tích hợp thông tin về thời gian vô cùng quan trọng.
 
+### 2.7 Kiến trúc bên trong U-Net: Block và Time Embedding
+
+Ở chương trước, chúng ta đã xem xét kiến ​​trúc tổng quan của mô hình `SimpleUNet`. Giờ đây, chúng ta sẽ đi sâu vào hai thành phần cốt lõi nhất của nó:
+
+1. `SinusoidalPositionEmbeddings`: Cơ chế thông minh giúp mã hóa bước thời gian (timestep) t thành một vectơ hữu ích.
+
+2. `Block`: Mô-đun chủ chốt có thể tái sử dụng, đảm nhiệm việc thực hiện các phép tích chập (convolution) và tích hợp thông tin về thời gian.
 
 
+**Phần 1: Time Embedding — Cho mô hình biết timestep**
 
+**Mã hóa thời gian bằng `SinusoidalPositionEmbeddings`**
 
-### 2.4 Time Embedding — Cho mô hình biết timestep
-Ở chương 2.3, ta đã chuẩn bị được ảnh gốc MNIST (x_0). Trong Diffusion Model, ta sẽ chọn một timestep (t), rồi thêm nhiễu vào ảnh gốc để tạo ra ảnh nhiễu (x_t). 
+Một thông tin cực kỳ quan trọng đối với mô hình của chúng ta là bước thời gian $$t$$. Mô hình cần biết liệu nó đang xử lý một hình ảnh có độ nhiễu thấp ($$t$$ nhỏ) hay độ nhiễu cao ($$t$$ lớn), vì chiến lược khử nhiễu cần được điều chỉnh cho phù hợp.
+
+Ở Chương 2.3, ta đã chuẩn bị được ảnh gốc MNIST ($$x_0$$). Trong Diffusion Model, ta sẽ chọn một timestep ($$t$$), rồi thêm nhiễu vào ảnh gốc để tạo ra ảnh nhiễu ($$x_t$$). 
 Công thức forward diffusion là:
 $$x_t = \sqrt{\bar{\alpha}_t}x_0 + \sqrt{1 - \bar{\alpha}_t}\epsilon$$
 
-Nhưng khi đưa ảnh nhiễu (x_t) vào mô hình, ta không thể chỉ đưa ảnh vào. Mô hình còn phải biết ảnh đó đang ở timestep nào.
+Nhưng khi đưa ảnh nhiễu ($$x_t$$) vào mô hình, ta không thể chỉ đưa ảnh vào. Mô hình còn phải biết ảnh đó đang ở timestep nào.
 | Bước thời gian (Timestep) | Mức độ nhiễu | Mô hình cần làm gì? |
 | :--- | :--- | :--- |
 | `(t = 10)` | Ít nhiễu | Khử nhiễu nhẹ |
@@ -895,17 +905,17 @@ Nhưng khi đưa ảnh nhiễu (x_t) vào mô hình, ta không thể chỉ đưa
 
 Vì vậy, để thực hiện được nhiệm vụ này, mô hình cần phải nhận cả hai thông tin đầu vào cùng lúc:
 
-```text
+```
   x_t, t
 ```
 Trong đó:
-- (x_t): ảnh đang bị nhiễu.
-- (t): timestep hiện tại.
+- ($$x_t$$): ảnh đang bị nhiễu.
+- ($$t$$): timestep hiện tại.
 
 Mô hình sẽ học hàm:
 $$\epsilon_\theta(x_t, t)$$
 
-Nghĩa là mô hình nhìn ảnh bị nhiễu (x_t), đồng thời biết timestep (t), rồi dự đoán nhiễu trong ảnh.
+Nghĩa là mô hình nhìn ảnh bị nhiễu ($$x_t$$), đồng thời biết timestep ($$t$$), rồi dự đoán nhiễu trong ảnh.
 
 Time Embedding giống như một chiếc đồng hồ báo cho mô hình biết:
 
@@ -913,19 +923,19 @@ Time Embedding giống như một chiếc đồng hồ báo cho mô hình biết
 
 Nếu không có chiếc đồng hồ này, mô hình chỉ nhìn thấy hình ảnh bị nhiễu, nhưng không biết nó đang ở giai đoạn đầu, giữa hay cuối của quá trình diffusion.
 
-Vấn đề: Chúng ta không thể chỉ đưa trực tiếp số nguyên t (vd: 5, 250, 900) vào mạng nơ-ron. Đây chỉ là các giá trị vô hướng và không cung cấp đủ tín hiệu phong phú để mô hình diễn giải những khác biệt và mối quan hệ tinh tế giữa các bước thời gian.
+Vấn đề: Chúng ta không thể chỉ đưa trực tiếp số nguyên $$t$$ (vd: 5, 250, 900) vào mạng nơ-ron. Đây chỉ là các giá trị vô hướng và không cung cấp đủ tín hiệu phong phú để mô hình diễn giải những khác biệt và mối quan hệ tinh tế giữa các bước thời gian.
 
-Giải pháp: Chúng tôi sử dụng Sinusoidal Position Embeddings, một kỹ thuật được giới thiệu trong bài báo gốc "Attention Is All You Need" về Transformer. Kỹ thuật này ánh xạ một số nguyên t duy nhất thành một vectơ đa chiều.
+Giải pháp: Chúng tôi sử dụng Sinusoidal Position Embeddings (Nhúng vị trí dạng sóng sin), một kỹ thuật được giới thiệu trong bài báo gốc "Attention Is All You Need" về Transformer. Kỹ thuật này ánh xạ một số nguyên $$t$$ duy nhất thành một vectơ đa chiều. Quá trình này tạo ra một "dấu vân tay" dạng sóng độc nhất cho mỗi bước thời gian. Nhờ đó, mô hình có thể dễ dàng học cách nhận diện các đặc điểm trong những dấu vân tay này để xác định mức độ nhiễu $$t$$.
 
-Một timestep không còn là một số đơn lẻ nữa, mà trở thành một vector có nhiều tín hiệu thời gian khác nhau. Một số chiều trong vector thay đổi chậm. Một số chiều thay đổi nhanh. Nhờ đó, neural network có thể hiểu timestep ở nhiều mức độ khác nhau.
+Một timestep không còn là một số đơn lẻ nữa, mà trở thành một vector có nhiều tín hiệu thời gian khác nhau. Một số chiều trong vector thay đổi chậm. Một số chiều thay đổi nhanh. Nhờ đó, mạng có thể hiểu timestep ở nhiều mức độ khác nhau.
 
-Ban đầu, timestep chỉ là một số: t = 150
+Ban đầu, timestep chỉ là một số: $$t$$ = 150
 
 Sau time embedding, nó trở thành một vector:
 
     emb(t) = [0.71, -0.22, 0.91, ..., 0.33]
 
-Ta không cần tự diễn giải từng số trong vector này. Điều quan trọng là neural network có thể dùng vector này để biết ảnh đang bị nhiễu ở mức nào.
+Ta không cần tự diễn giải từng số trong vector này. Điều quan trọng là mạng có thể dùng vector này để biết ảnh đang bị nhiễu ở mức nào.
 
 ```python
 class SinusoidalPositionEmbeddings(nn.Module):
@@ -955,3 +965,253 @@ class SinusoidalPositionEmbeddings(nn.Module):
 | `sin()` | Mã hóa timestep bằng sóng sin | Một kiểu tín hiệu thời gian |
 | `cos()` | Mã hóa timestep bằng sóng cos | Một kiểu tín hiệu thời gian khác |
 | `torch.cat(...)` | Ghép sin và cos lại | Tạo vector embedding hoàn chỉnh |
+
+**Phần 2: Phân tích chi tiết Block (Viên gạch CNN của U-Net)**
+
+Ở phần 1, ta đã biết cách biến timestep ($$t$$) thành một vector gọi là Time Embedding. Nhưng câu hỏi tiếp theo là:
+
+```Làm sao đưa thông tin thời gian đó vào mô hình xử lý ảnh?```
+
+Trong U-Net, ta không đưa time embedding vào một lần duy nhất ở đầu mô hình. Thay vào đó, ta đưa nó vào nhiều `Block` khác nhau trong quá trình xử lý ảnh.
+
+Mỗi Block có nhiệm vụ:
+- Nhận feature map của ảnh.
+- Xử lý feature map bằng convolution.
+- Nhận time embedding.
+- Biến time embedding về đúng số channel.
+- Cộng time embedding vào feature map.
+- Tiếp tục xử lý feature map.
+- Downsample hoặc upsample ảnh.
+
+```python
+class Block(nn.Module):
+    # Simple Conv -> GroupNorm -> GELU block
+    def __init__(self, in_ch, out_ch, time_emb_dim, up=False):
+        super().__init__()
+        self.time_mlp = nn.Linear(time_emb_dim, out_ch)
+
+        if up:
+            self.conv1 = nn.Conv2d(2 * in_ch, out_ch, kernel_size=3, padding=1)
+            self.transform = nn.ConvTranspose2d(out_ch, out_ch, kernel_size=4, stride=2, padding=1)
+        else:
+            self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
+            self.transform = nn.Conv2d(out_ch, out_ch, kernel_size=4, stride=2, padding=1)
+
+        self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1)
+        self.norm1 = nn.GroupNorm(8, out_ch)
+        self.norm2 = nn.GroupNorm(8, out_ch)
+        self.act = nn.GELU()
+
+    def forward(self, x, t):
+        h = self.conv1(x)
+        h = self.act(h)
+        h = self.norm1(h)
+
+        time_emb = self.time_mlp(t)
+        time_emb = self.act(time_emb)
+        time_emb = time_emb[:, :, None, None]
+
+        h = h + time_emb
+
+        h = self.conv2(h)
+        h = self.act(h)
+        h = self.norm2(h)
+
+        return self.transform(h)
+```
+
+| Thành phần | Vai trò chính | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| `Block` | Khối xử lý cơ bản của U-Net | Một “trạm xử lý ảnh” trong mô hình |
+| `in_ch` | Số channel đầu vào | Feature map đi vào có bao nhiêu lớp thông tin |
+| `out_ch` | Số channel đầu ra | Block sẽ tạo ra bao nhiêu lớp thông tin mới |
+| `time_emb_dim` | Kích thước vector time embedding | Độ dài tín hiệu thời gian từ Chapter 3 |
+| `up=False` | Block dùng cho đường đi xuống | Giảm kích thước ảnh |
+| `up=True` | Block dùng cho đường đi lên | Phóng to kích thước ảnh |
+| `time_mlp` | Biến time embedding về đúng số channel | Điều chỉnh “đồng hồ thời gian” cho vừa với feature map |
+| `conv1`, `conv2` | Các lớp convolution | Trích xuất đặc trưng ảnh |
+| `GroupNorm` | Chuẩn hóa feature map | Giúp training ổn định hơn |
+| `GELU` | Hàm kích hoạt | Giúp mô hình học quan hệ phi tuyến |
+| `transform` | Downsample hoặc upsample | Thay đổi kích thước không gian của ảnh |
+
+**Vì sao cần `Block`?**
+
+U-Net gồm nhiều tầng xử lý ảnh. Nếu ta viết từng tầng riêng lẻ, code sẽ rất dài và lặp lại. Vì vậy, ta tạo một class `Block` dùng lại nhiều lần. Một `Block` có thể dùng ở hai nơi:
+
+| Vị trí trong U-Net | up | Nhiệm vụ |
+| :--- | :--- | :--- |
+| Encoder / Down | `False` | Giảm kích thước ảnh, tăng số channel |
+| Decoder / Up | `True` | Giảm kích thước ảnh, tăng số channel |
+
+**Giải thích phần `__init__`**
+
+```python
+def __init__(self, in_ch, out_ch, time_emb_dim, up=False):
+    super().__init__()
+    self.time_mlp = nn.Linear(time_emb_dim, out_ch)
+```
+
+| Dòng code | Nó làm gì? | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| `def __init__(...)` | Hàm khởi tạo Block | Định nghĩa bên trong Block có những layer nào |
+| `in_ch` | Số channel đầu vào | Feature map đi vào rộng bao nhiêu |
+| `out_ch` | Số channel đầu ra | Feature map đi ra rộng bao nhiêu |
+| `time_emb_dim` | Kích thước time embedding | Vector thời gian dài bao nhiêu |
+| `up=False` | Quyết định block downsample hay upsample | Block đang ở đường xuống hay đường lên |
+| `super().__init__()` | Khởi tạo lớp cha `nn.Module` | Bước bắt buộc khi viết module PyTorch |
+| `nn.Linear(time_emb_dim, out_ch)` | Biến time embedding từ `time_emb_dim` sang `out_ch` | Làm cho vector thời gian có cùng số channel với feature map |
+
+**Giải thích `Block` ở đường xuống (down): `up=False`**
+
+```python
+else:
+    self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
+    self.transform = nn.Conv2d(out_ch, out_ch, kernel_size=4, stride=2, padding=1)
+```
+
+| Thành phần | Nó làm gì? | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| `self.conv1` | Đổi feature map từ `in_ch` sang `out_ch` | Trích xuất đặc trưng ảnh |
+| `kernel_size=3` | Dùng bộ lọc `3x3` | Nhìn vùng lân cận nhỏ quanh mỗi pixel |
+| `padding=1` | Thêm viền ảo quanh ảnh | Giữ nguyên kích thước không gian sau convolution |
+| `self.transform` | Convolution với `stride=2` | Giảm chiều cao và chiều rộng ảnh đi một nửa |
+| `kernel_size=4, stride=2, padding=1` | Công thức downsample phổ biến | Giúp `32 -> 16 -> 8 -> 4 -> 2` |
+
+Ví dụ shape khi đi xuống: `[64, 32, 32, 32] → [64, 64, 16, 16]`
+
+| Thành phần | Trước Block | Sau Block |
+| :--- | :--- | :--- |
+| Batch | `64` | `64` |
+| Channel | `32` | `64` |
+| Height | `32` | `16` |
+| Width | `32` | `16` |
+
+Trong `Encoder`, ảnh nhỏ dần nhưng channel tăng dần. Điều này giúp mô hình học đặc trưng tổng quát hơn.
+
+**Giải thích `Block` ở đường lên (up): `up=True`**
+
+```python
+if up:
+    self.conv1 = nn.Conv2d(2 * in_ch, out_ch, kernel_size=3, padding=1)
+    self.transform = nn.ConvTranspose2d(out_ch, out_ch, kernel_size=4, stride=2, padding=1)
+```
+
+| Thành phần | Nó làm gì? | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| `up=True` | Block dùng ở decoder | Đường đi lên trong U-Net |
+| `2 * in_ch` | Vì có skip connection | Feature hiện tại được nối với feature từ encoder |
+| `nn.Conv2d(2 * in_ch, out_ch, ...)` | Giảm số channel sau khi concat | Trộn thông tin từ decoder và encoder |
+| `ConvTranspose2d` | Upsampling bằng convolution ngược | Phóng to ảnh lên gấp đôi |
+| `stride=2` | Tăng chiều cao và chiều rộng | Ví dụ `8 -> 16` |
+
+**Vì sao là `2 * in_ch`?**
+
+Trong U-Net, ở đường lên (up) ta nối feature hiện tại với feature được lưu từ đường xuống (down): `x = torch.cat((x, residual_x), dim=1)`
+
+Việc nối theo `dim=1` nghĩa là nối theo channel.
+
+Ví dụ:
+
+x hiện tại:      `[64, 128, 8, 8]`
+residual_x:      `[64, 128, 8, 8]`
+sau torch.cat:   `[64, 256, 8, 8]`
+
+Số channel tăng gấp đôi, nên `conv1` ở block up phải nhận `2 * in_ch`
+
+**Các layer chung trong `Block`**
+
+```python
+self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1)
+self.norm1 = nn.GroupNorm(8, out_ch)
+self.norm2 = nn.GroupNorm(8, out_ch)
+self.act = nn.GELU()
+```
+
+| Thành phần | Nó làm gì? | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| `conv2` | Tiếp tục xử lý feature map | Sau khi thêm time embedding, ta cho model học tiếp |
+| `GroupNorm(8, out_ch)` | Chia channel thành 8 nhóm để chuẩn hóa | Giúp mô hình học ổn định hơn |
+| `GELU()` | Hàm kích hoạt phi tuyến | Giúp mô hình học quan hệ phức tạp |
+| `padding=1` | Giữ nguyên kích thước sau conv `3x3` | Không làm ảnh bị nhỏ sau mỗi convolution thường |
+
+**Vì sao dùng `GroupNorm` thay vì `BatchNorm`?**
+
+Trong Diffusion Model, batch size đôi khi không lớn, nhất là khi train ảnh lớn hoặc model lớn.
+
+`BatchNorm` phụ thuộc nhiều vào thống kê của batch. Nếu batch nhỏ, thống kê này có thể không ổn định.
+
+`GroupNorm` chuẩn hóa theo nhóm channel trong từng ảnh, nên thường ổn định hơn với batch nhỏ.
+
+| Normalization | Phụ thuộc batch size nhiều không? | Phù hợp Diffusion không? |
+| :--- | :--- | :--- |
+| `BatchNorm` | Có | Ít phù hợp hơn khi batch nhỏ |
+| `GroupNorm` | Ít hơn | Phù hợp hơn |
+
+**Giải thích hàm `forward`**
+
+```python
+    def forward(self, x, t):
+        h = self.conv1(x)
+        h = self.act(h)
+        h = self.norm1(h)
+
+        time_emb = self.time_mlp(t)
+        time_emb = self.act(time_emb)
+        time_emb = time_emb[:, :, None, None]
+
+        h = h + time_emb
+
+        h = self.conv2(h)
+        h = self.act(h)
+        h = self.norm2(h)
+
+        return self.transform(h)
+```
+
+| Dòng code | Nó làm gì? | Trực giác dễ hiểu | Shape ví dụ |
+| :--- | :--- | :--- | :--- |
+| `def forward(self, x, t):` | Nhận feature map `x` và time embedding `t` | Block cần cả ảnh và thời gian | `x: [64, 32, 32, 32]`, `t: [64, 256]` |
+| `h = self.conv1(x)` | Convolution đầu tiên | Trích xuất đặc trưng ảnh | `[64, 64, 32, 32]` |
+| `h = self.act(h)` | Áp dụng GELU | Thêm khả năng học phi tuyến | `[64, 64, 32, 32]` |
+| `h = self.norm1(h)` | Chuẩn hóa feature map | Giúp training ổn định | `[64, 64, 32, 32]` |
+| `time_emb = self.time_mlp(t)` | Đổi time embedding về `out_ch` | Làm thời gian khớp với số channel | `[64, 64]` |
+| `time_emb = self.act(time_emb)` | Áp dụng GELU cho time embedding | Cho tín hiệu thời gian linh hoạt hơn | `[64, 64]` |
+| `time_emb = time_emb[:, :, None, None]` | Thêm 2 chiều không gian | Chuẩn bị cộng vào feature map | `[64, 64, 1, 1]` |
+| `h = h + time_emb` | Cộng thời gian vào feature map | Mỗi pixel nhận thêm thông tin timestep | `[64, 64, 32, 32]` |
+| `h = self.conv2(h)` | Convolution lần hai | Xử lý ảnh sau khi đã biết thời gian | `[64, 64, 32, 32]` |
+| `h = self.act(h)` | GELU | Tăng khả năng biểu diễn | `[64, 64, 32, 32]` |
+| `h = self.norm2(h)` | GroupNorm lần hai | Ổn định feature map | `[64, 64, 32, 32]` |
+| `return self.transform(h)` | Downsample hoặc upsample | Đổi kích thước ảnh | Down: `[64, 64, 16, 16]` |
+
+**Vì sao cần `time_emb[:, :, None, None]`?**
+
+Trước khi reshape, time embedding có shape: `[batch_size, channels]`
+
+Ví dụ: `[64, 64]`
+
+Nhưng feature map có shape: `[batch_size, channels, height, width]`
+
+Ví dụ: `[64, 64, 32, 32]` 
+
+Ta không thể cộng trực tiếp: `[64, 64]` + `[64, 64, 32, 32]`
+
+Vì vậy ta đổi time embedding thành: `[64, 64, 1, 1]`
+
+bằng dòng: `time_emb = time_emb[:, :, None, None]`
+
+Sau đó PyTorch tự broadcast: `[64, 64, 1, 1]` → `[64, 64, 32, 32]`
+
+Nghĩa là cùng một tín hiệu thời gian được cộng vào mọi vị trí pixel trong feature map
+
+`Block là nơi feature ảnh và thông tin thời gian gặp nhau. Nhờ đó, U-Net không chỉ nhìn thấy ảnh nhiễu, mà còn biết ảnh đó đang nhiễu ở timestep nào.`
+
+
+
+
+
+
+
+
+
+
+
