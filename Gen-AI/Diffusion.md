@@ -1203,9 +1203,104 @@ Sau đó PyTorch tự broadcast: `[64, 64, 1, 1]` → `[64, 64, 32, 32]`
 
 Nghĩa là cùng một tín hiệu thời gian được cộng vào mọi vị trí pixel trong feature map
 
-`Block là nơi feature ảnh và thông tin thời gian gặp nhau. Nhờ đó, U-Net không chỉ nhìn thấy ảnh nhiễu, mà còn biết ảnh đó đang nhiễu ở timestep nào.`
+```text
+Block là nơi feature ảnh và thông tin thời gian gặp nhau. Nhờ đó, U-Net không chỉ nhìn thấy ảnh nhiễu, mà còn biết ảnh đó đang nhiễu ở timestep nào.
+```
 
+### III. Tạo và Lấy mẫu: Giải thích Toán học
 
+Quá trình huấn luyện đã hoàn tất. Mô hình U-Net của chúng ta, $\epsilon_\theta$, giờ đây đã là một "bậc thầy" trong một nhiệm vụ cụ thể: nhìn vào một bức ảnh nhiễu $x_t$ và dự đoán phần nhiễu $\epsilon$ ẩn bên trong nó. Giờ đây, chúng ta sẽ sử dụng kỹ năng thuần thục này trong một vòng lặp mạnh mẽ, lặp đi lặp lại để đảo ngược quá trình khuếch tán và tạo ra một bức ảnh mới từ sự hỗn loạn thuần túy.
+
+**Mục tiêu:** Bắt đầu với một tensor nhiễu Gaussian thuần túy, $x_T$, và áp dụng mô hình của chúng ta $T$ lần để loại bỏ nhiễu một cách tuần tự, từng bước một từ $x_T \rightarrow x_{T-1} \rightarrow \dots \rightarrow x_1 \rightarrow x_0$.
+
+**Mẹo nhỏ:** Chúng ta không có một bức ảnh nhiễu "thật" $x_T$ từ quá trình khuếch tán xuôi (forward process)—chúng ta đang tạo ra nó từ con số không! Nhưng đây chính là điểm mấu chốt: sau $T = 1000$ bước thêm nhiễu, $\bar{\alpha}_T \approx 0$, vì vậy $x_T \approx$ nhiễu Gaussian thuần túy. Bất kỳ tensor nhiễu ngẫu nhiên nào về mặt thống kê cũng không thể phân biệt được với một $x_T$ "thật". Do đó, chúng ta chỉ cần lấy mẫu bằng `torch.randn()` và giả vờ như nó đến từ việc phá hủy một bức ảnh nào đó.
+
+### Logic cốt lõi: Từ dự đoán nhiễu đến khử nhiễu hình ảnh
+
+Làm thế nào chúng ta có thể sử dụng một *mô hình dự đoán nhiễu (noise predictor)* để thực sự *khử nhiễu cho một bức ảnh*?
+
+Hãy nhớ lại công thức của quá trình khuếch tán thuận: 
+$$x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t}\epsilon$$
+
+Nếu chúng ta có $x_t$ và mô hình của chúng ta đưa ra một dự đoán tốt cho $\epsilon$ (hãy gọi nó là $\epsilon_\theta$), chúng ta có thể đơn giản là biến đổi đại số phương trình này để tìm $$x_0$$:
+
+$$\text{predicted } x_0 = \frac{1}{\sqrt{\bar{\alpha}_t}}(x_t - \sqrt{1 - \bar{\alpha}_t}\epsilon_\theta(x_t, t))$$
+
+Đây là một insight vô cùng mạnh mẽ: **dự đoán nhiễu tương đương với việc dự đoán bức ảnh sạch ban đầu.**
+
+Nhưng tại sao không nhảy thẳng một bước về $x_0$? Bởi vì dự đoán của chúng ta không hoàn hảo—đặc biệt là ở giai đoạn đầu khi $x_t$ hầu như chỉ toàn là nhiễu. Thay vì tin tưởng vào một ước lượng nhiễu duy nhất, chúng ta thực hiện các bước nhỏ: sử dụng $x_0$ dự đoán được để tính toán xem $x_{t-1}$ sẽ trông như thế nào, rồi lặp lại. Mỗi bước sẽ làm mịn và cải thiện kết quả ước lượng.
+
+### Công thức lấy mẫu DDPM (The DDPM Sampling Formula)
+
+Các tác giả của bài báo gốc DDPM đã chứng minh một công thức thực hiện chính xác điều này. Nó nhận bức ảnh nhiễu hiện tại $x_t$ và nhiễu dự đoán $\epsilon_\theta$ để tính toán phân phối của bức ảnh trước đó, $x_{t-1}$. Công thức để lấy mẫu từ phân phối đó là:
+
+$$x_{t-1} = \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{1 - \alpha_t}{\sqrt{1 - \bar{\alpha}_t}} \epsilon_\theta(x_t, t) \right) + \sigma_t z$$
+
+**Vậy Làm thế nào để chứng minh công thức này?**
+
+Phép chứng minh đầy đủ sử dụng định lý Bayes trên phân phối Gaussian, nhưng trực giác đằng sau nó rất đơn giản. Chúng ta đã biết:
+
+* **Khuếch tán thuận (Forward diffusion):** $x_t = \sqrt{\bar{\alpha}_t}x_0 + \sqrt{1 - \bar{\alpha}_t}\epsilon$
+* **Mô hình của chúng ta dự đoán $\epsilon$**, vì vậy chúng ta có thể ước lượng được $x_0$.
+
+Công thức này chỉ đơn giản nói rằng: "Dựa trên ước lượng của bạn về $x_0$, đâu là giá trị $x_{t-1}$ có khả năng xảy ra nhất?". Đối với phân phối Gaussian, bài toán này có một nghiệm dạng đóng (closed-form answer). Các hệ số phức tạp xuất hiện là để khớp các phương sai (variances) lại với nhau một cách chính xác.
+
+Phương trình này nhìn có vẻ đáng sợ, nhưng nhiệm vụ của nó rất đơn giản. Hãy cùng bóc tách nó thành một "công thức" trực quan để thu được $x_{t-1}$ từ $x_t$:
+
+1. **$\epsilon_\theta(x_t, t)$:** Đầu tiên, chúng ta yêu cầu U-Net dự đoán phần nhiễu trong bức ảnh hiện tại $x_t$.
+2. **$x_t - (\dots \times \epsilon_\theta)$:** Chúng ta lấy bức ảnh hiện tại trừ đi phần nhiễu đã được dự đoán sau khi nhân với một tỷ lệ (scaled). Đây chính là phần "khử nhiễu" (denoising). Cụm hệ số $(1 - \alpha_t) / \sqrt{1 - \bar{\alpha}_t}$ đóng vai trò là hệ số tỷ lệ (scaling factor). Bước này cho chúng ta một ước lượng thô về bức ảnh sạch ban đầu.
+3. **$1 / \sqrt{\alpha_t} \times (\dots)$:** Sau đó, chúng ta phóng đại (scale up) kết quả thô này lên. Bước này giúp bù đắp lại thực tế là trong quá trình khuếch tán thuận, chúng ta đã thu nhỏ (scale down) bức ảnh theo tỷ lệ $\sqrt{\alpha_t}$ ở mỗi bước. Đây chính là phần "hiệu chỉnh" (correction).
+4. **$+\sigma_t z$:** Cuối cùng, chúng ta cộng ngược trở lại một lượng nhỏ nhiễu mới.
+   * $z$ là một mẫu nhiễu Gaussian hoàn toàn mới (nếu $t > 1$) hoặc bằng 0 (nếu $t = 1$).
+   * $\sigma_t$ (sigma) là độ lệch chuẩn, một giá trị cố định được tính toán từ bộ lịch trình $\beta$ (beta schedule) của chúng ta.
+   * **Tại sao lại cộng thêm nhiễu ngược trở lại?** Quá trình ngược (reverse process) cũng là một quá trình ngẫu nhiên (stochastic). Việc thêm một chút ngẫu nhiên này ở mỗi bước (ngoại trừ bước cuối cùng) giúp cải thiện chất lượng của các bức ảnh đầu ra cuối cùng và ngăn mô hình không bị "kẹt" vào một lối mòn định tính (deterministic path).
+
+### Vòng lặp tạo ảnh (Generation Loop)
+
+Toàn bộ quá trình tạo ảnh thực chất chỉ là một vòng lặp áp dụng công thức này nhiều lần.
+
+Hãy hình dung một dòng thời gian chạy từ t=1000 về t=0.
+```text
+1.  Bắt đầu tại t=1000 với x_1000, vốn là nhiễu ngẫu nhiên thuần túy.
+2.  Đặt t = 999. Sử dụng x_1000 và công thức để tính x_999. Lúc này, hình ảnh chứa 99,9% nhiễu.
+3.  Đặt t = 998. Sử dụng x_999 và công thức để tính x_998. Lúc này, hình ảnh chứa 99,8% nhiễu.
+4.  ...
+5.  Đặt t = 1. Sử dụng x_2 và công thức để tính x_1. Hình ảnh lúc này trông gần như đã rõ nét.
+6.  Đặt t = 0. Sử dụng x_1 và công thức để tính x_0. Hình ảnh cuối cùng, rõ nét sẽ hiện ra.
+```
+
+Trong phần tiếp theo, chúng ta sẽ thấy mã nguồn cách vòng lặp toán học tinh tế này được triển khai trong phương thức tạo mẫu (sample method) thuộc lớp Diffusion của chúng ta.
+
+### Triển khai mã nguồn
+
+```python
+    @torch.no_grad()
+    def sample(self, n_samples):
+    # Suy luận: Tạo hình ảnh từ nhiễu thuần túy
+        self.model.eval()
+        x = torch.randn((n_samples, self.config.in_channels, self.config.image_size, self.config.image_size,), device=self.alpha_hat.device)
+
+        for i in reversed(range(1, self.config.timesteps)):
+            t = torch.full((n_samples,), i, device=self.alpha_hat.device, dtype=torch.long)
+            predicted_noise = self.model(x, t)
+
+            alpha = self.alpha[t][:, None, None, None]
+            alpha_hat = self.alpha_hat[t][:, None, None, None]
+            beta = self.beta[t][:, None, None, None]
+
+            if i > 1:
+                noise = torch.randn_like(x)
+            else:
+                noise = torch.zeros_like(x)
+
+            # Công thức lấy mẫu DDPM tiêu chuẩn
+            x = (1 / torch.sqrt(alpha)) * (x - ((1 - alpha) / torch.sqrt(1 - alpha_hat)) * predicted_noise) + torch.sqrt(beta) * noise
+
+        self.model.train()
+        x = (x.clamp(-1, 1) + 1) / 2  # Thay đổi tỷ lệ thành [0, 1]
+
+        return x
+```
 
 
 
