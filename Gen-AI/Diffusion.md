@@ -1207,7 +1207,7 @@ Nghĩa là cùng một tín hiệu thời gian được cộng vào mọi vị t
 Block là nơi feature ảnh và thông tin thời gian gặp nhau. Nhờ đó, U-Net không chỉ nhìn thấy ảnh nhiễu, mà còn biết ảnh đó đang nhiễu ở timestep nào.
 ```
 
-### III. Tạo và Lấy mẫu: Giải thích Toán học
+### III. Tạo và Lấy mẫu (Generation & Sampling): Giải thích Toán học
 
 Quá trình huấn luyện đã hoàn tất. Mô hình U-Net của chúng ta, $\epsilon_\theta$, giờ đây đã là một "bậc thầy" trong một nhiệm vụ cụ thể: nhìn vào một bức ảnh nhiễu $x_t$ và dự đoán phần nhiễu $\epsilon$ ẩn bên trong nó. Giờ đây, chúng ta sẽ sử dụng kỹ năng thuần thục này trong một vòng lặp mạnh mẽ, lặp đi lặp lại để đảo ngược quá trình khuếch tán và tạo ra một bức ảnh mới từ sự hỗn loạn thuần túy.
 
@@ -1302,11 +1302,156 @@ Trong phần tiếp theo, chúng ta sẽ thấy mã nguồn cách vòng lặp to
         return x
 ```
 
+| Dòng code | Nó làm gì? | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| `@torch.no_grad()` | Không tính gradient | Sampling chỉ sinh ảnh, không học |
+| `self.model.eval()` | Đưa model sang chế độ đánh giá (evaluation mode) | Model tạm thời ngừng chế độ train |
+| `torch.randn(...)` | Tạo noise ngẫu nhiên ban đầu | Bắt đầu từ hỗn loạn |
+| `for i in reversed(...)` | Đi ngược từ timestep lớn về nhỏ | Khử nhiễu ngược thời gian |
+| `torch.full(...)` | Tạo tensor timestep hiện tại | Báo cho model biết đang ở bước nào |
+| `predicted_noise = self.model(x, t)` | U-Net dự đoán noise | Model đoán phần nhiễu trong ảnh hiện tại |
+| `alpha`, `alpha_hat`, `beta` | Lấy hệ số diffusion | Dùng trong công thức khử nhiễu |
+| `torch.randn_like(x)` | Thêm noise phụ ở bước giữa | Giữ tính ngẫu nhiên của quá trình sinh ảnh |
+| `torch.zeros_like(x)` | Không thêm noise ở bước cuối | Giúp ảnh cuối sạch hơn |
+| Công thức cập nhật `x` | Tạo `x_{t-1}` từ `x_t` | Khử noise một bước |
+| `self.model.train()` | Đưa model về lại chế độ train | Nếu sau đó muốn train tiếp |
+| `x.clamp(-1, 1)` | Giới hạn pixel | Tránh giá trị vượt biên |
+| `(x + 1) / 2` | Đưa pixel về `[0, 1]` | Để hiển thị hoặc lưu ảnh |
+| `return x` | Trả về ảnh sinh ra | Output cuối cùng |
+
+### Vì sao cần `@torch.no_grad()`?
+Trong training, PyTorch cần lưu lại các phép tính để tính gradient. Nhưng trong sampling, ta không cập nhật model. Ta chỉ dùng model để dự đoán noise. Vì vậy, ta dùng: `@torch.no_grad()`
+
+| Không dùng `torch.no_grad()` | `Dùng torch.no_grad()` |
+| :--- | :--- |
+| Tốn RAM hơn | Tiết kiệm RAM |
+| Chạy chậm hơn | Chạy nhanh hơn |
+| PyTorch lưu graph không cần thiết | Không lưu graph |
+
+Sampling là quá trình dùng model đã học để sinh ảnh mới. Ta bắt đầu từ noise ngẫu nhiên, rồi dùng U-Net dự đoán noise và khử nhiễu từng bước.
+
+Nếu training là quá trình:
+
+`Ảnh thật → thêm nhiễu → học đoán nhiễu`
+
+thì sampling là quá trình:
+
+`Noise → khử nhiễu dần → ảnh mới`
+
+# IV. Vòng lặp huấn luyện (Training Loop)
+
+Bây giờ ta cần viết Training Loop để mô hình thật sự học.
+
+Training loop sẽ làm các việc sau:
+
+1. Lấy batch ảnh MNIST.
+2. Đưa ảnh lên GPU hoặc CPU.
+3. Gọi loss = diffusion(images).
+4. Xóa gradient cũ.
+5. Lan truyền ngược bằng loss.backward().
+6. Cập nhật trọng số bằng optimizer.step().
+7. Sau mỗi epoch, sinh ảnh mẫu để xem model học đến đâu.
+8. Lưu ảnh và checkpoint.
+
+```python
+optimizer = torch.optim.AdamW(
+    diffusion.parameters(),
+    lr=config.learning_rate,
+)
 
 
+def train(diffusion, dataloader, optimizer, config):
+    diffusion.train()
+
+    for epoch in range(config.epochs):
+        total_loss = 0.0
+
+        for batch_idx, (images, _) in enumerate(dataloader):
+            if config.max_batches_per_epoch > 0:
+                if batch_idx >= config.max_batches_per_epoch:
+                    break
+
+            images = images.to(config.device)
+
+            loss = diffusion(images)
+
+            optimizer.zero_grad(set_to_none=True)
+
+            loss.backward()
+
+            optimizer.step()
+
+            total_loss += loss.item()
+
+            if batch_idx % 50 == 0:
+                print(
+                    f"Epoch [{epoch + 1}/{config.epochs}] "
+                    f"Batch [{batch_idx}] "
+                    f"Loss: {loss.item():.4f}"
+                )
+
+        num_batches = batch_idx + 1
+        avg_loss = total_loss / num_batches
+
+        print(
+            f"\nEpoch [{epoch + 1}/{config.epochs}] "
+            f"Average Loss: {avg_loss:.4f}"
+        )
+
+        samples = diffusion.sample(config.num_sample_images)
+
+        sample_path = os.path.join(
+            config.output_dir,
+            f"samples_epoch_{epoch + 1:03d}.png",
+        )
+
+        save_image(samples, sample_path, nrow=4)
+
+        show_images(
+            samples,
+            nrow=4,
+            title=f"Samples sau epoch {epoch + 1}",
+        )
+
+        checkpoint_path = os.path.join(
+            config.output_dir,
+            "mnist_diffusion_checkpoint.pt",
+        )
+
+        torch.save(
+            {
+                "epoch": epoch + 1,
+                "config": config.__dict__,
+                "model_state_dict": diffusion.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "loss": avg_loss,
+            },
+            checkpoint_path,
+        )
+
+        print("Đã lưu ảnh mẫu tại:", sample_path)
+        print("Đã lưu checkpoint tại:", checkpoint_path)
+        print("-" * 60)
 
 
+train(diffusion, dataloader, optimizer, config)
+```
+| Thành phần | Vai trò chính | Trực giác dễ hiểu |
+| :--- | :--- | :--- |
+| `optimizer` | Cập nhật trọng số model | Người sửa sai cho mô hình |
+| `AdamW` | Thuật toán tối ưu | Cách model học từ lỗi sai |
+| `train(...)` | Hàm huấn luyện chính | Vòng lặp dạy model |
+| `epoch` | Một lượt học qua dataset | Một vòng ôn bài |
+| `batch` | Một nhóm ảnh nhỏ | Mỗi lần học một phần dữ liệu |
+| `loss` | Mức độ model đoán sai | Điểm sai của model |
+| `loss.backward()` | Tính gradient | Tìm xem sai ở đâu |
+| `optimizer.step()` | Cập nhật weight | Sửa model để lần sau đoán tốt hơn |
+| `diffusion.sample()` | Sinh ảnh mẫu | Kiểm tra model học đến đâu |
+| `checkpoint` | File lưu model | Lưu lại trạng thái học |
 
+Vì sao nói Training Loop là nơi mô hình thật sự học?
 
+Ở mỗi batch, ta đưa ảnh gốc vào Diffusion. Diffusion tự chọn timestep, thêm noise, dùng U-Net dự đoán noise, rồi trả về loss. Sau đó training loop dùng loss để cập nhật trọng số.
 
+Nói đơn giản: Training Loop là quá trình cho model luyện tập đoán noise: đoán sai thì sửa, lặp lại nhiều lần thì model dần biết cách khử nhiễu.
 
