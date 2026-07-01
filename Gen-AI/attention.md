@@ -220,6 +220,69 @@ Công thức softmax cho một vector:
 
 $$\text{softmax}(x_i) = \frac{e^{x_i}}{\sum_{j} e^{x_j}}$$
 
+**Tính Softmax hàng 1:**
+```
+e^0.707 ≈ 2.028
+e^0.000 = 1
+e^0.707 ≈ 2.028
+```
+Tổng: `2.028 + 1 + 2.028 = 5.056`
+
+Chia cho Tổng:
+```
+2.028 / 5.056 ≈ 0.401
+1.000 / 5.056 ≈ 0.198
+2.028 / 5.056 ≈ 0.401
+```
+Vậy hàng 1 sau softmax sẽ là: `[0.401, 0.198, 0.401]`
+
+Nghĩa là:
+```
+"Tôi" chú ý:
+40.1% đến "Tôi"
+19.8% đến "học"
+40.1% đến "AI"
+```
+Giờ hàng 2 và 3 cũng thực hiện tương tự như hàng 1, ta thu được kết quả sau:
+
+Hàng 2 sau softmax: `[0.198, 0.401, 0.401]`
+
+Hàng 3 sau softmax: `[0.248, 0.248, 0.504]`
+
+**Giờ ta có Attention Weights**
+
+Sau softmax, ta có ma trận trọng số chú ý sau:
+
+```
+A =
+[
+  [0.401, 0.198, 0.401],
+  [0.198, 0.401, 0.401],
+  [0.248, 0.248, 0.504]
+]
+```
+
+Đây chính là: $$\text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)$$
+
+Mỗi hàng cộng lại xấp xỉ bằng 1:
+
+```
+0.401 + 0.198 + 0.401 = 1.000
+0.198 + 0.401 + 0.401 = 1.000
+0.248 + 0.248 + 0.504 = 1.000
+```
+
+**B5. Nhân Attention Weights với V**
+
+
+
+
+
+
+
+
+
+
 
 
 
