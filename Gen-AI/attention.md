@@ -78,35 +78,147 @@ Mô hình AI có sẵn 3 ma trận hệ số cố định gọi là $W_Q, W_K, W
 - $$K = X \times W_K$$
 - $$V = X \times W_V$$
 
+Nhờ phép nhân ma trận này, từ một ma trận $X$ ban đầu, máy tính tách thành 3 ma trận chức năng riêng biệt để chuẩn bị đi "so khớp" xem từ nào cần chú ý đến từ nào.
 
+**Ví dụ:**
 
+Bây giờ chúng ta sẽ thêm ví dụ để thực hành với những phép toán giúp trực quan hơn, trong ví dụ này tôi sẽ đưa ra một câu chỉ 3 từ để dễ thực hiện phép toán bằng tay hơn.
 
+Câu: "Tôi học AI"
 
+Ta có 3 token:
 
+```
+Token 1 = Tôi
+Token 2 = học
+Token 3 = AI
+```
 
+Mỗi token sẽ được biểu diễn bằng vector 2 chiều. Như vậy `số token = 3`, `số chiều mỗi vector = 2`
 
+Do đó:
+```
+Q có shape: 3 × 2
+K có shape: 3 × 2
+V có shape: 3 × 2
+```
 
+Giả sử ta có sẵn Q, K, V và chọn các số đơn giản để thực hiện phép tính:
 
+```
+Q =
+[
+  [1, 0],   ← Query của "Tôi"
+  [0, 1],   ← Query của "học"
+  [1, 1]    ← Query của "AI"
+]
+```
 
+```
+K =
+[
+  [1, 0],   ← Key của "Tôi"
+  [0, 1],   ← Key của "học"
+  [1, 1]    ← Key của "AI"
+]
+```
 
+```
+V =
+[
+  [10, 0],   ← Value của "Tôi"
+  [0, 10],   ← Value của "học"
+  [10, 10]   ← Value của "AI"
+]
+```
 
+Ở đây ta cố tình chọn: `Q = K`. Mục đích là để dễ nhìn
 
+Từ công thức: $$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
 
+Chúng ta sẽ bắt đầu mổ xẻ từng phần
 
+**B1. Tính Kᵀ 
 
+Ma trận K ban đầu có `shape: 3 x 2`. Vì vậy, ta cần chuyển vị (chuyển hàng thành cột):
+```
+Kᵀ =
+[
+  [1, 0, 1],
+  [0, 1, 1]
+]
+```
+Lúc này, Kᵀ có `shape: 2 × 3`
 
+**B2. Tính QKᵀ**
 
+Mỗi token sẽ so sánh với cả 3 token. Ta tính từng ô (hàng 1 x cột 1, hàng 1 x cột 2, hàng 1 x cột 3,.v.v.)
 
+```
+QKᵀ =
+[
+  [1, 0],
+  [0, 1],
+  [1, 1]
+]
+×
+[
+  [1, 0, 1],
+  [0, 1, 1]
+]
+```
+Do đó:
+```
+QKᵀ =
+[
+  [1, 0, 1],
+  [0, 1, 1],
+  [1, 1, 2]
+]
+```
 
+Bây giờ ta đã thu được ma trận QKᵀ. Ma trận này gọi là điểm số chú ý (attention scores).
 
+Đọc theo hàng:
+```
+Hàng 1: "Tôi" chú ý đến [Tôi, học, AI]
+Hàng 2: "học" chú ý đến [Tôi, học, AI]
+Hàng 3: "AI" chú ý đến [Tôi, học, AI]
+```
 
+**B3. Chia cho $\sqrt{d_k}$**
 
+Ở đây vector Key có 2 chiều: `dₖ = 2`. Vậy nên `√dₖ = √2 ≈ 1.414`
 
+Ta chia từng phần tử trong QKᵀ cho 1.414:
+```
+QKᵀ / √dₖ =
+[
+  [1/1.414, 0/1.414, 1/1.414],
+  [0/1.414, 1/1.414, 1/1.414],
+  [1/1.414, 1/1.414, 2/1.414]
+]
+```
 
+Xấp xỉ:
+```
+Scaled Scores =
+[
+  [0.707, 0.000, 0.707],
+  [0.000, 0.707, 0.707],
+  [0.707, 0.707, 1.414]
+]
+```
 
+Đây vẫn là điểm chú ý, nhưng đã được làm “mềm” hơn\
 
+**B4. Softmax từng hàng**
 
+Bây giờ ta cần biến mỗi hàng thành xác suất. Vì mỗi hàng là một token đang hỏi: `“Tôi nên chú ý đến các token khác bao nhiêu phần trăm?”`
 
+Công thức softmax cho một vector:
+
+$$\text{softmax}(x_i) = \frac{e^{x_i}}{\sum_{j} e^{x_j}}$$
 
 
 
