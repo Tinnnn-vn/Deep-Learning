@@ -20,8 +20,30 @@ Trong các chương tiếp theo bạn sẽ hiểu chính xác cách thức hoạ
 - Mặt nạ nhân quả (Causal Mask): Làm thế nào để ngăn chặn mô hình gian lận bằng cách nhìn trước tương lai.
 - Cơ chế chú ý đa đầu (Multi-Head Attention): Làm thế nào để mở rộng cơ chế này cho các mô hình mạnh mẽ.
 
-<img width="609" height="331" alt="Screenshot 2026-07-01 203258" src="https://github.com/user-attachments/assets/1aeb6412-c853-41ce-a7c9-acab392da540" />
+```mermaid
+graph TD
+    Q[Q] --> MatMul1[MatMul]
+    K[K] --> MatMul1
+    MatMul1 --> Scale[Scale]
+    Scale --> Mask[Mask opt.]
+    Mask --> SoftMax[SoftMax]
+    SoftMax --> MatMul2[MatMul]
+    V[V] ----> MatMul2
+    MatMul2 --> Output[Output]
 
+    classDef default fill:#333,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef purple fill:#b090df,stroke:#7040a0,stroke-width:2px,color:#000;
+    classDef yellow fill:#ffd54f,stroke:#ffb300,stroke-width:2px,color:#000;
+    classDef pink fill:#ff8a80,stroke:#e53935,stroke-width:2px,color:#000;
+    classDef green fill:#81c784,stroke:#43a047,stroke-width:2px,color:#000;
+    classDef inputs fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#000;
+
+    class MatMul1,MatMul2 purple;
+    class Scale yellow;
+    class Mask pink;
+    class SoftMax green;
+    class Q,K,V inputs;
+```
 **Scaled Dot-Product Attention**
 
 | Thành phần | Vai trò |
@@ -505,10 +527,10 @@ Chúng ta đã xây dựng xong phần cốt lõi của Attention. Trong chươn
 
 Để sử dụng Attention trong một mô hình thực tế như GPT, chúng ta cần hai nâng cấp quan trọng.
 
-1. Mặt nạ nhân quả (Causal Mask): Chúng ta phải ngăn mô hình nhìn vào tương lai khi tạo văn bản.
-2. Sự chú ý đa đầu (Multi-Head Attention): Cho mô hình có nhiều “góc nhìn” cùng lúc khi đọc một câu, thay vì chỉ có một kiểu chú ý duy nhất.
+1. Causal Mask: Chúng ta phải ngăn mô hình nhìn vào tương lai khi tạo văn bản.
+2. Multi-Head Attention: Cho mô hình có nhiều “góc nhìn” cùng lúc khi đọc một câu, thay vì chỉ có một kiểu chú ý duy nhất.
 
-**Phần 1: Mặt nạ nhân quả - Causal Mask (Đừng nhìn trước tương lai)**
+**Phần 1: Causal Mask (Đừng nhìn trước tương lai)**
 
 Vấn đề: GPT là một mô hình tự hồi quy . Khi dự đoán từ tiếp theo trong câu "Tôi học AI", quyết định của nó chỉ được dựa trên các từ mà nó đã thấy trước đó: Từ "Tôi" và "học" không được phép nhìn thấy từ "AI" phía sau.
 
@@ -729,7 +751,33 @@ Mask dùng -∞ để khiến softmax biến những vị trí bị cấm thành
 Token hiện tại chỉ được nhìn quá khứ và chính nó, không được nhìn tương lai.
 `
 
-**Phần 2: Sự chú ý đa đầu (Multi-Head Attention)**
+**Phần 2: Multi-Head Attention**
+
+```mermaid
+graph TD
+    V[V] --> LinearV[Linear]
+    K[K] --> LinearK[Linear]
+    Q[Q] --> LinearQ[Linear]
+    
+    LinearV --> SDPA[Scaled Dot-Product Attention <br> h heads]
+    LinearK --> SDPA
+    LinearQ --> SDPA
+    
+    SDPA --> Concat[Concat]
+    Concat --> LinearOut[Linear]
+    LinearOut --> Output[Output]
+
+    classDef default fill:#333,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef purple fill:#b090df,stroke:#7040a0,stroke-width:2px,color:#000;
+    classDef yellow fill:#ffd54f,stroke:#ffb300,stroke-width:2px,color:#000;
+    classDef inputs fill:#eceff1,stroke:#607d8b,stroke-width:2px,color:#000;
+    classDef linear fill:#b3e5fc,stroke:#039be5,stroke-width:2px,color:#000;
+    
+    class SDPA purple;
+    class Concat yellow;
+    class V,K,Q inputs;
+    class LinearV,LinearK,LinearQ,LinearOut linear;
+```
 
 Vì sao cần Multi-Head Attention?
 
