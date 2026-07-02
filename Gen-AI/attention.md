@@ -65,9 +65,9 @@ Bây giờ hãy ráp nối hình học này vào cơ chế Attention:
 
 Ba mũi tên chức năng (Q, K, V) thực chất là viết tắt của:
 
-- Query (Q - Câu hỏi): Đại diện cho từ đang muốn "đi tìm kiếm" ngữ cảnh. 🔍
-- Key (K - Từ khóa): Đại diện cho "nhãn" của tất cả các từ trong câu để từ khác đối chiếu. 🏷️
-- Value (V - Giá trị): Chứa thông tin ngữ nghĩa thực sự của từ đó khi đã tìm được sự liên quan. 💎
+- Query (Q - Câu hỏi): Đại diện cho từ đang muốn "đi tìm kiếm" ngữ cảnh.
+- Key (K - Từ khóa): Đại diện cho "nhãn" của tất cả các từ trong câu để từ khác đối chiếu.
+- Value (V - Giá trị): Chứa thông tin ngữ nghĩa thực sự của từ đó khi đã tìm được sự liên quan.
 
 **Ma trận Q, K, V được tạo ra như thế nào?**
 
@@ -506,7 +506,7 @@ Chúng ta đã xây dựng xong phần cốt lõi của Attention. Trong chươn
 Để sử dụng Attention trong một mô hình thực tế như GPT, chúng ta cần hai nâng cấp quan trọng.
 
 1. Mặt nạ nhân quả (Causal Mask): Chúng ta phải ngăn mô hình nhìn vào tương lai khi tạo văn bản.
-2. Tính song song (Parallelism): Chúng ta cần làm cho "cuộc đối thoại" phong phú hơn bằng cách cho phép nó diễn ra từ nhiều góc nhìn cùng một lúc.
+2. Sự chú ý đa đầu (Multi-Head Attention): Cho mô hình có nhiều “góc nhìn” cùng lúc khi đọc một câu, thay vì chỉ có một kiểu chú ý duy nhất.
 
 **Phần 1: Mặt nạ nhân quả - Causal Mask (Đừng nhìn trước tương lai)**
 
@@ -729,13 +729,101 @@ Mask dùng -∞ để khiến softmax biến những vị trí bị cấm thành
 Token hiện tại chỉ được nhìn quá khứ và chính nó, không được nhìn tương lai.
 `
 
-**Phần 2: Tính song song (Parallelism)**
+**Phần 2: Sự chú ý đa đầu (Multi-Head Attention)**
 
+Vì sao cần Multi-Head Attention?
 
+Giả sử câu: `Nam đưa sách cho Minh vì cậu ấy cần học.` Từ `“cậu ấy”` có thể liên quan đến nhiều thứ:
 
+```
+Ai là người cần học?
+Nam hay Minh?
+Ai đưa sách?
+Ai nhận sách?
+Hành động chính là gì?
+```
 
+Nếu chỉ có 1 attention head, mô hình chỉ có một bảng attention duy nhất để học tất cả quan hệ này. Nhưng nếu có nhiều head:
+```
+Head 1: tập trung vào chủ ngữ
+Head 2: tập trung vào tân ngữ
+Head 3: tập trung vào đại từ “cậu ấy”
+Head 4: tập trung vào quan hệ ngữ nghĩa
+```
+Hiểu đơn giản: `Multi-Head Attention là nhiều nhóm Attention nhỏ cùng đọc một câu, mỗi nhóm chú ý theo một kiểu khác nhau.`
 
+Ví dụ:
 
+```
+C = 768  # Số chiều
+n_head = 12
+head_dim = C / n_head = 64
+```
 
+**Split (Phân tách):** Chúng ta lấy các tensor $Q$, $K$, và $V$ (mỗi tensor có kích thước (B, T, C)) và biến đổi hình dạng (reshape) chúng thành (B, n_head, T, head_dim). Bước này giúp tách biệt rõ ràng kích thước của các "đầu" (heads).
 
+```python
+# B=1, T=3, C=768
+q = torch.randn(1, 3, 768)
 
+# Chia C thành (n_head, head_dim) -> (12, 64)
+q_multi_head = q.view(1, 3, 12, 64)
+
+# Đưa chiều kích thước đầu về phía trước để tính toán song song.
+q_multi_head = q_multi_head.transpose(1, 2) # -> (1, 12, 3, 64)
+```
+
+**Attend in Parallel (Tính toán Attention song song):** Chúng ta thực hiện chính xác cơ chế Scaled Dot-Product Attention giống như trước đó. Cơ chế broadcasting của PyTorch sẽ tự động xử lý kích thước n_head, thực hiện đồng thời 12 phép tính attention cùng một lúc. Kích thước đầu ra sẽ là (B, n_head, T, head_dim).
+
+**Merge (Gộp):** Chúng ta đảo ngược lại thao tác tách ở bước 1. Chúng ta nối (concatenate) các đầu chú ý lại với nhau thành một vector một chiều có kích thước C.
+```python
+# Hoán vị ngược lại và biến đổi hình dạng (reshape)
+merged_output = output_per_head.transpose(1, 2).contiguous().view(1, 3, 768)
+```
+**Project (Chiếu): Chúng ta đưa kết quả gộp này qua một lớp tuyến tính cuối cùng (c_proj). Bước này cho phép mô hình học cách kết hợp tốt nhất các thông tin thu được từ tất cả các đầu chú ý khác nhau.
+
+Bằng cách thực hiện nhiều luồng xử lý song song, mô hình có thể phân tích văn bản đầu vào từ nhiều góc nhìn khác nhau cùng một lúc, giúp nó trở nên mạnh mẽ hơn rất nhiều.
+
+Hiện tại chúng ta đã có đầy đủ các mảnh ghép lý thuyết. Trong chương cuối cùng, chúng ta sẽ lắp ráp chúng lại để hoàn thiện mã nguồn hoàn chỉnh, sẵn sàng cho môi trường production.
+
+### V. Bản thiết kế đầy đủ
+
+```python
+class CausalSelfAttention(nn.Module):
+    def __init__(self, config):
+        super().__init__(n_embd, n_head)
+        assert config.n_embd % config.n_head == 0
+        # Tạo QKV, xuất đa đầu và mặt nạ
+        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd)
+        self.c_proj = nn.Linear(config.n_embd, config.n_embd)
+        self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size)).view(1, 1, config.block_size, config.block_size))
+
+    def forward(self, x):
+        B, T, C = x.size()
+        
+        # 1. Thu được Q, K, V từ một phép chiếu hiệu quả duy nhất
+        q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
+        
+        # 2. Chia thành nhiều nhóm nhỏ để thảo luận song song
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
+
+        # 3. Cơ chế cốt lõi: cơ chế chú ý tích vô hướng, được điều chỉnh tỷ lệ và che phủ.
+        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+        att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float("-inf")) # No looking ahead!
+        att = F.softmax(att, dim=-1)
+        y = att @ v
+
+        # 4. Ghép các đầu lại với nhau và hoàn tất.
+        y = y.transpose(1, 2).contiguous().view(B, T, C)
+        return self.c_proj(y)
+```
+
+Chúng ta bắt đầu từ một bài toán nền tảng: các từ ngữ vốn mang tính chất tĩnh, nhưng ý nghĩa của chúng lại phụ thuộc vào ngữ cảnh. Chúng ta đã giải quyết bài toán đó bằng cách xây dựng một cơ chế cho phép các từ thực hiện một "cuộc hội thoại" với nhau.
+
+Chúng ta đã xây dựng trực giác cho cuộc hội thoại này thông qua Queries, Keys, và Values.
+
+Mô-đun `CausalSelfAttention` này là thành phần quan trọng nhất trong các mô hình ngôn ngữ lớn hiện đại.
+
+Attention đã được giải thích đầy đủ.
