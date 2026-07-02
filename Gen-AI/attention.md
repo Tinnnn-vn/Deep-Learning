@@ -729,6 +729,7 @@ Mask dùng -∞ để khiến softmax biến những vị trí bị cấm thành
 Token hiện tại chỉ được nhìn quá khứ và chính nó, không được nhìn tương lai.
 `
 
+**Phần 2: Tính song song (Parallelism)**
 
 
 
