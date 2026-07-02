@@ -375,6 +375,94 @@ Nghĩa là nó đã trộn thêm thông tin từ “Tôi” và “AI”.
 
 Đặc biệt, vì “học” chú ý khá mạnh đến “AI”, vector mới của “học” đã chứa nhiều thông tin từ “AI”.
 
+### III. Triển khai mã nguồn
+
+Chúng ta đã xây dựng được trực giác toán học từ chương trước (như scores, scaled, softmax,.v.v.). Giờ hãy chuyển các phép toán trên thành các đoạn mã PyTorch.
+
+Hãy xem lại công thức toán học một lần nữa
+
+$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+
+Chúng ta sẽ tạo dữ liệu bằng các tensor thô để xem từng con số. Như ở trên chúng ta sử dụng một câu đơn giản với 3 token (`T=3`), mỗi token được biểu diễn bằng một vectơ 2 chiều (`C=2`)
+
+Giả sử ta đã có sẵn các giá trị của Q, K, V.
+
+**B1. Tạo tensor Q, K, V**
+
+```python
+import torch
+import torch.nn.functional as F
+import math
+
+Q = torch.tensor([
+    [1.0, 0.0],
+    [0.0, 1.0],
+    [1.0, 1.0]
+])
+
+K = torch.tensor([
+    [1.0, 0.0],
+    [0.0, 1.0],
+    [1.0, 1.0]
+])
+
+V = torch.tensor([
+    [10.0, 0.0],
+    [0.0, 10.0],
+    [10.0, 10.0]
+])
+```
+**B2. Tính QKᵀ**
+
+```python
+scores = Q @ K.T # Nhân với ma trận chuyển vị K
+print(scores)
+```
+Kết quả:
+```
+tensor([[1., 0., 1.],
+        [0., 1., 1.],
+        [1., 1., 2.]])
+```
+
+**B3. Chia cho $\sqrt{d_k}$**
+
+```python
+d_k = K.shape[-1] # d_k = 2
+scaled_scores = scores / math.sqrt(d_k)
+print(scale_scores)
+```
+
+Kết quả:
+```
+tensor([[0.7071, 0.0000, 0.7071],
+        [0.0000, 0.7071, 0.7071],
+        [0.7071, 0.7071, 1.4142]])
+```
+
+**B4. Softmax**
+
+```python
+attention_weights = torch.softmax(scaled_scores, dim=-1)
+print(attention_weights)
+```
+
+Kết quả:
+```
+tensor([[0.4011, 0.1978, 0.4011],
+        [0.1978, 0.4011, 0.4011],
+        [0.2483, 0.2483, 0.5035]])
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
