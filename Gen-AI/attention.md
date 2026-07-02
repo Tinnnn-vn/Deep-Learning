@@ -394,18 +394,21 @@ import torch
 import torch.nn.functional as F
 import math
 
+#Shape=(3x2)
 Q = torch.tensor([
     [1.0, 0.0],
     [0.0, 1.0],
     [1.0, 1.0]
 ])
 
+#Shape=(3x2)
 K = torch.tensor([
     [1.0, 0.0],
     [0.0, 1.0],
     [1.0, 1.0]
 ])
 
+#Shape=(3x2)
 V = torch.tensor([
     [10.0, 0.0],
     [0.0, 10.0],
@@ -454,10 +457,37 @@ tensor([[0.4011, 0.1978, 0.4011],
         [0.2483, 0.2483, 0.5035]])
 ```
 
+**B5. Nhân Attention Weights với V (Tính A.V)**
 
+```python
+output = attention_weights @ V
+print(output)
+```
 
+Kết quả:
+```
+tensor([[8.0222, 5.9889],
+        [5.9889, 8.0222],
+        [7.5174, 7.5174]])
+```
 
+Ban đầu Q, K, V có `shape=3x2`
 
+Khi tính QKᵀ ta có: `(3 × 2) × (2 × 3) = 3 × 3`
+
+Sau softmax vẫn là: `3 × 3`
+
+Rồi nhân với V: `(3 × 3) × (3 × 2) = 3 × 2`
+
+Kết quả: `Output_shape = 3 × 2`
+
+Tức là:
+```
+Input có 3 token
+Output vẫn có 3 token
+```
+
+Attention không làm mất token nào. Nó chỉ làm mỗi token giàu thông tin ngữ cảnh hơn.
 
 
 
