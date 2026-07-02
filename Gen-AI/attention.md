@@ -789,33 +789,39 @@ Hiện tại chúng ta đã có đầy đủ các mảnh ghép lý thuyết. Tro
 ### V. Bản thiết kế đầy đủ
 
 ```python
-class CausalSelfAttention(nn.Module):
+class CausalSelfAttention(nn.Module):   # Đây là một module Attention trong Transformer Decoder / GPT
     def __init__(self, config):
         super().__init__(n_embd, n_head)
+        # Số chiều embedding phải chia hết cho số head
         assert config.n_embd % config.n_head == 0
-        # Tạo QKV, xuất đa đầu và mặt nạ
+        # Tạo QKV
         self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd)
+        # Trộn thông tin từ các head với nhau và đưa ra output cuối
         self.c_proj = nn.Linear(config.n_embd, config.n_embd)
+        # Tạo causal mask (dùng để chặn nhìn tương lai)
         self.register_buffer("bias", torch.tril(torch.ones(config.block_size, config.block_size)).view(1, 1, config.block_size, config.block_size))
 
     def forward(self, x):
         B, T, C = x.size()
         
-        # 1. Thu được Q, K, V từ một phép chiếu hiệu quả duy nhất
+        # 1. Thu được Q, K, V từ input x
         q, k, v = self.c_attn(x).split(self.n_embd, dim=2)
         
-        # 2. Chia thành nhiều nhóm nhỏ để thảo luận song song
+        # 2. Chia thành nhiều head
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
         k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)
 
-        # 3. Cơ chế cốt lõi: cơ chế chú ý tích vô hướng, được điều chỉnh tỷ lệ và che phủ.
+        # 3. Tính attention score
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+        # Áp causal mask
         att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float("-inf")) # No looking ahead!
+        # Softmax
         att = F.softmax(att, dim=-1)
+        # Nhân attention weight với V
         y = att @ v
 
-        # 4. Ghép các đầu lại với nhau và hoàn tất.
+        # 4. Ghép các head lại với nhau và hoàn tất.
         y = y.transpose(1, 2).contiguous().view(B, T, C)
         return self.c_proj(y)
 ```
