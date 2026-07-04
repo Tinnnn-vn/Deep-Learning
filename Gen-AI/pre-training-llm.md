@@ -1,18 +1,5 @@
 # LLM Pre-Training
 
-```mermaid
-flowchart LR
-    A[Raw Text] --> B[Tokenization]
-    B --> C[Token IDs]
-    C --> D[Embedding Layer]
-    D --> E[Transformer]
-    E --> F[Logits]
-    F --> G[Softmax]
-    G --> H[Probabilities]
-    H --> I[Cross Entropy Loss]
-    I --> J[Backpropagation]
-    J --> E
-```
 ### 1. LLM Pre-Training là gì?
 
 Pre-training là giai đoạn đầu tiên để huấn luyện một LLM. Ở giai đoạn này, model chưa phải là chatbot như ChatGPT. Nó chỉ học một nhiệm vụ rất đơn giản:
@@ -211,21 +198,240 @@ không cộng lại thành 1
 
 ### 8. Softmax
 
+Softmax biến logits thành xác suất.
 
+Ví dụ:
+```
+mat: 3.2
+rug: 1.3
+moon: -2.1
+```
+Sau softmax có thể thành:
+```
+mat: 86.6%
+rug: 13.0%
+moon: 0.4%
+```
+Bây giờ ta có xác suất thật sự. Tổng các xác suất bằng 100%.
 
+Công thức softmax: 
+```math
+P(\text{token}_i) = \frac{e^{\text{logit}_i}}{\sum_{j} e^{\text{logit}_j}}
+```
+Nghĩa là: `logit cao → xác suất cao`, `logit thấp → xác suất thấp`, `softmax biến điểm thô thành phần trăm`
 
+### 9. Cross-Entropy Loss
 
+Trong training, ta biết đáp án đúng. Ví dụ input: `The cat sat on the` và đáp án đúng là: `mat`
 
+Model sẽ dự đoán:
+```
+mat: 86.6%
+rug: 13.0%
+moon: 0.4%
+```
 
+Vì model cho `"mat"` xác suất cao, nó làm khá tốt. Ta cần một con số đo lỗi. Con số đó gọi là loss.
 
+Với next-token prediction, cross-entropy loss có dạng đơn giản: `Loss = -log(xác suất của token đúng)`
 
+Nếu model cho token đúng xác suất cao:
+```
+P(mat) = 0.866
+Loss = -log(0.866) ≈ 0.14
+```
+Loss nhỏ → tốt.
 
+Nếu model cho token đúng xác suất thấp:
+```
+P(mat) = 0.01
+Loss = -log(0.01) ≈ 4.6
+```
+Loss lớn → sai nhiều.
 
+Nghĩa là:
+```
+Cross-Entropy đo độ “ngạc nhiên” của model.
+Nếu đáp án đúng mà model đã đoán xác suất cao → ít ngạc nhiên → loss thấp.
+Nếu đáp án đúng mà model đoán xác suất thấp → rất ngạc nhiên → loss cao.
+```
 
+### 10. Backpropagation
 
+Sau khi có loss, model dùng backpropagation để điều chỉnh trọng số. Quá trình là:
+```
+model đoán
+→ tính loss
+→ xem sai ở đâu
+→ truyền lỗi ngược lại
+→ cập nhật weights
+→ lần sau đoán tốt hơn một chút
+```
+Sau nhiều lần học:
+```
+model giảm xác suất của moon
+model tăng xác suất của mat
+```
+Cứ như vậy hàng tỷ lần, model tốt dần lên.
 
+### 11. Training khác Generation như thế nào?
 
+Đây là điểm rất quan trọng.
 
+**Khi training**
+
+Model có input và đáp án đúng.
+
+ví dụ: 
+```
+Input: The cat sat on the
+Target: mat
+```
+Model tạo xác suất:
+```
+mat: 86.6%
+rug: 13.0%
+moon: 0.4%
+```
+Sau đó tính loss vì ta biết đáp án đúng là `"mat"`.
+
+Mục tiêu training:
+```
+giảm loss
+cập nhật weights
+học tốt hơn
+```
+
+**Khi generation**
+
+Khi bạn chat với ChatGPT, không có đáp án đúng sẵn. Model vẫn tạo xác suất:
+```
+mat: 86.6%
+rug: 13.0%
+floor: 0.3%
+moon: 0.1%
+```
+Nhưng thay vì tính loss, nó chọn một token để sinh ra.
+
+Mục tiêu generation: `Tạo văn bản tiếp theo`
+
+Tóm tắt:
+
+| Giai đoạn | Có đáp án đúng không? | Làm gì với xác suất? |
+| :--- | :---: | :--- |
+| Training | Có | Tính loss và cập nhật weights |
+| Generation | Không | Chọn/sampling token tiếp theo |
+
+# 12. Vì sao không luôn chọn token xác suất cao nhất?
+
+Giả sử model luôn chọn từ có xác suất cao nhất. Cách này gọi là chọn tham lam. 
+
+Ví dụ: `The weather today is ___`
+
+Xác suất:
+```
+sunny: 40%
+cloudy: 30%
+rainy: 20%
+beautiful: 10%
+```
+Nếu luôn chọn cao nhất, model luôn chọn: `sunny`. Kết quả sẽ an toàn nhưng dễ nhàm chán, lặp lại. Vì vậy khi generation, ta thường sample từ phân phối xác suất.
+
+Nghĩa là:
+```
+sunny có 40% cơ hội được chọn
+cloudy có 30%
+rainy có 20%
+beautiful có 10%
+```
+Nghĩa là mọi xác suất đều có cơ hội được chọn. Nhờ vậy câu trả lời có sự đa dạng hơn.
+
+# 13. Temperature
+
+Temperature điều khiển độ ngẫu nhiên. 
+
+Công thức: 
+```
+adjusted_logits = logits / temperature
+```
+Chúng ta sẽ hiểu như này, nếu Temperature thấp `temperature = 0.2 hoặc 0.5`. Model trở nên chắc chắn hơn, ít sáng tạo hơn. Xác suất bị “nhọn” lại:
+```
+sunny: rất cao
+cloudy: thấp hơn nhiều
+rainy: rất thấp
+beautiful: gần như không chọn
+```
+Phù hợp với:
+```
+hỏi kiến thức
+viết code
+giải toán
+trả lời cần chính xác
+```
+Ngược lại, nếu Temperature cao `temperature = 1.2 hoặc 1.5`. Model sáng tạo hơn, xác suất trải đều hơn. Token ít phổ biến cũng có cơ hội được chọn.
+
+Phù hợp với:
+```
+viết truyện
+làm thơ
+brainstorm ý tưởng
+sáng tạo slogan
+```
+Nói ngắn gọn: 
+```
+temperature thấp → an toàn, ổn định
+temperature cao → sáng tạo, bất ngờ
+```
+# 14. Top-p
+
+Top-p, hay nucleus sampling, là cách giới hạn nhóm token được phép chọn.
+
+Ví dụ sau softmax:
+```
+sunny: 40%
+cloudy: 30%
+rainy: 20%
+beautiful: 8%
+banana: 1%
+spaceship: 1%
+```
+Nếu dùng: `top_p = 0.9`.
+
+Model sẽ chọn nhóm token có tổng xác suất khoảng 90%:
+```
+sunny 40%
+cloudy 30%
+rainy 20%
+= tổng 90%
+```
+Sau đó model chỉ sample trong nhóm này, bỏ qua các token quá vô lý như:
+```
+banana
+spaceship
+```
+Top-p giúp model: Vẫn đa dạng, nhưng không quá điên
+
+# 15. Pipline dễ nhớ
+
+```mermaid
+flowchart LR
+    A[Raw Text] --> B[Tokenization]
+    B --> C[Token IDs]
+    C --> D[Embedding Layer]
+    D --> E[Transformer]
+    E --> F[Logits]
+    F --> G[Softmax]
+    G --> H[Probabilities]
+    H --> I[Cross Entropy Loss]
+    I --> J[Backpropagation]
+    J --> E
+```
+
+# Tổng Kết
+
+Bây giờ bạn đã nắm vững các nguyên tắc cơ bản của Pre-Training. Bạn đã đi qua toàn bộ quy trình, từ tệp văn bản thô trên internet đến một mô hình phức tạp có khả năng dự đoán token tiếp theo với độ chính xác đáng kể.
+
+Nhưng hành trình của chúng tôi vẫn chưa kết thúc. Mô hình được đào tạo trước này là một động cơ kiến thức thô, không phải là một trợ lý hữu ích. Điều này dẫn đến hai câu hỏi quan trọng về điều gì sẽ xảy ra tiếp theo. -> **Đó là Transformer**
 
 
 
