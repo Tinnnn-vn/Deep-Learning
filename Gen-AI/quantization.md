@@ -190,9 +190,9 @@ $$q = \text{clamp}\left(\text{round}\left(\frac{x}{S} + Z\right), q_{\min}, q_{\
 
 Trong đó:
 
-- x: giá trị float ban đầu;
-- S: scale;
-- Z: zero-point;
-- round: làm tròn về số nguyên gần nhất;
-- clamp: chặn kết quả để không vượt khỏi miền số nguyên;
-- q: giá trị sau quantization.
+- x: giá trị float ban đầu
+- S: scale
+- Z: zero-point
+- round: làm tròn về số nguyên gần nhất
+- clamp: chặn kết quả để không vượt khỏi miền số nguyên
+- q: giá trị sau quantization
