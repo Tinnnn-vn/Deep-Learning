@@ -44,4 +44,63 @@ Một mô hình ngôn ngữ lớn (LLM) có thể chứa hàng tỷ trọng số
 
 Cách tính gần đúng: `Bộ nhớ = số tham số × số byte cho mỗi tham số`
 
+| Định dạng | Bit/trọng số | Byte/trọng số | Bộ nhớ lý thuyết cho 7B tham số |
+| :--- | :--- | :--- | :--- |
+| FP32 | 32 | 4 | khoảng 28 GB |
+| FP16 | 16 | 2 | khoảng 14 GB |
+| INT8 | 8 | 1 | khoảng 7 GB |
+| INT4 | 4 | 0.5 | khoảng 3.5 GB |
+
+Các con số trên chỉ tính phần trọng số. Khi chạy thực tế, chương trình còn cần bộ nhớ cho activation, KV cache, buffer và các metadata khác.
+
+Quantization giúp giải quyết hai vấn đề lớn:
+
+**1. Giảm dung lượng mô hình**
+
+Mô hình nhỏ hơn sẽ:
+
+- dễ lưu trên ổ cứng hơn
+
+- dễ tải xuống hơn
+
+- có thể chạy trên GPU ít VRAM hơn
+
+- có cơ hội chạy trên laptop hoặc thiết bị biên
+
+**2. Giảm lượng dữ liệu phải chuyển trong GPU**
+
+Trong quá trình suy luận (inference), GPU liên tục đọc trọng số từ VRAM để thực hiện phép nhân ma trận. Nếu trọng số nhỏ hơn, lượng dữ liệu cần truyền cũng nhỏ hơn.
+
+Trong nhiều trường hợp, tốc độ suy luận không chỉ bị giới hạn bởi khả năng tính toán. Nó còn bị giới hạn bởi tốc độ đưa trọng số từ bộ nhớ đến nhân xử lý.
+
+## III. FP32 lưu một con số như thế nào?
+
+Một số `FP32` sử dụng 32 bit, được chia thành ba phần:
+
+| Thành phần | Số bit | Vai trò |
+| :--- | :--- | :--- |
+| Sign | 1 | Cho biết số âm hay dương |
+| Exponent | 8 | Điều khiển độ lớn của số |
+| Mantissa/Fraction | 23 | Giữ phần chi tiết của số |
+
+Cách biểu diễn này giúp FP32 chứa được: 
+- số rất nhỏ;
+- số rất lớn;
+- số thập phân khá chính xác.
+
+Ví dụ, số 3.5 trong hệ nhị phân là: `3.5 = 11.1₂`
+
+Chuẩn hóa theo dạng khoa học nhị phân: `1.11 × 2¹`
+
+Từ đó FP32 lưu:
+
+[sign]   [exponent]   [mantissa]
+
+[  0 ]   [10000000]   [11000000000000000000000]
+
+Bạn không cần ghi nhớ cách chuyển đổi từng bit để hiểu quantization. Điều cần nhớ là:
+
+`FP32 rất linh hoạt và chính xác, nhưng mỗi số tốn 32 bit.`
+
+
 
