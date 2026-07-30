@@ -42,6 +42,6 @@ Một mô hình ngôn ngữ lớn (LLM) có thể chứa hàng tỷ trọng số
 
 **Ví dụ với mô hình 7 tỷ tham số**
 
-
+Cách tính gần đúng: `Bộ nhớ = số tham số × số byte cho mỗi tham số`
 
 
