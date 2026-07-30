@@ -196,3 +196,42 @@ Trong đó:
 - round: làm tròn về số nguyên gần nhất
 - clamp: chặn kết quả để không vượt khỏi miền số nguyên
 - q: giá trị sau quantization
+
+Với symmetric quantization, `Z = 0`, công thức rút gọn thành:
+
+$$q = \text{clamp}\left(\text{round}\left(\frac{x}{S}\right), q_{\min}, q_{\max}\right)$$
+
+**2. Dequantization: integer → float xấp xỉ**
+
+Công thức: $$\hat{x} = S(q - Z)$$
+
+Ký hiệu x̂ không phải là số ban đầu chính xác. Nó là giá trị xấp xỉ được dựng lại.
+```
+x   = giá trị ban đầu
+x̂  = giá trị gần đúng sau khi nén rồi giải nén
+```
+
+Sai số: $$\text{error} = x - \hat{x}$$
+
+*Vì sao phải có clamp?*
+
+Giả sử một phép tính cho ra `q = 150`, nhưng INT8 chỉ chứa tối đa `127`.
+
+Khi đó:
+
+clamp(150, -128, 127) = 127
+
+Nếu không chặn, giá trị có thể bị tràn số và cho kết quả sai hoàn toàn.
+
+
+
+
+
+
+
+
+
+
+
+
+
