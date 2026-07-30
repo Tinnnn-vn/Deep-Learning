@@ -102,5 +102,97 @@ Bạn không cần ghi nhớ cách chuyển đổi từng bit để hiểu quant
 
 `FP32 rất linh hoạt và chính xác, nhưng mỗi số tốn 32 bit.`
 
+Trong khi đó, `INT8` chỉ là một số nguyên nằm trong khoảng: `-128 đến 127`. INT8 không có exponent và mantissa. Vì vậy, muốn chuyển FP32 sang INT8, ta cần tạo một phép ánh xạ.
 
+## IV. Đổi từ số thực sang số nguyên
 
+Giả sử một nhóm trọng số nằm trong khoảng: `-3.5 đến 3.5`
+
+Trong khi INT8 có 256 giá trị có thể sử dụng: `-128, -127, ..., 0, ..., 126, 127`
+
+Ta có thể tưởng tượng 256 số nguyên này là 256 chiếc hộp. Mỗi số thực sẽ được đặt vào chiếc hộp gần nó nhất.
+```
+Thế giới số thực:  -3.5 ------------------------------- 3.5
+
+                       ↓ chia thành các bước nhỏ ↓
+
+Thế giới INT8:     -128 ------------------------------- 127
+```
+
+Vì số hộp là hữu hạn, nhiều số thực gần nhau có thể rơi vào cùng một hộp. Ví dụ:
+```text
+0.51  ┐
+      ├─> cùng được biểu diễn bằng số nguyên 2
+0.58  ┘
+```
+
+Đây chính là nguồn gốc của quantization error, tức sai số lượng tử hóa.
+
+## V. Scale và Zero-point thực sự có ý nghĩa gì?
+
+Quantization thường được điều khiển bởi hai tham số:
+
+- Scale, ký hiệu S.
+- Zero-point, ký hiệu Z.
+
+**1. Scale là kích thước của một bước**
+
+Scale trả lời câu hỏi: `Khi số nguyên tăng thêm 1, giá trị trong thế giới số thực thay đổi bao nhiêu?`
+
+Giả sử miền số thực là: `[-3.5, 3.5]`
+
+Có hai cách nhìn thường gặp:
+
+Affine quantization tổng quát dùng cả độ rộng miền float và miền integer:
+```
+S = (x_max - x_min) / (q_max - q_min)
+S = 7.0 / 255 ≈ 0.02745
+```
+
+Symmetric quantization buộc tâm của hai miền trùng tại số 0 và thường chọn:
+```
+S = max(|x|) / 127
+S = 3.5 / 127 ≈ 0.02756
+```
+
+Hai kết quả khá gần nhau trong ví dụ đối xứng này, nhưng chúng đến từ hai cách thiết lập miền khác nhau. Phần mã phía dưới sử dụng cách symmetric với `S = abs_max / 127`.
+
+Nghĩa là một bước trong INT8 tương ứng khoảng `0.02756` ở miền số thực. Bạn có thể hình dung:
+```
+INT8 tăng 1 đơn vị
+        ↓
+FP32 tăng khoảng 0.02745
+```
+
+**2. Zero-point là vị trí của số 0**
+
+Zero-point trả lời câu hỏi: `Giá trị float 0.0 sẽ được biểu diễn bằng số nguyên nào?`
+
+Nếu miền dữ liệu đối xứng quanh 0, ta thường chọn: `Z = 0`. Cách này được gọi là symmetric quantization.
+
+Ví dụ:
+```
+-3.5 -------- 0.0 -------- 3.5
+-127 --------  0  -------- 127
+```
+Đối với trọng số mô hình, symmetric quantization rất phổ biến vì:
+- công thức đơn giản;
+- không cần lưu zero-point khác 0;
+- phép tính trên phần cứng dễ tối ưu hơn.
+
+## VI. Công thức quantization và dequantization
+
+**1. Quantization: float → integer**
+
+Công thức tổng quát:
+
+$$q = \text{clamp}\left(\text{round}\left(\frac{x}{S} + Z\right), q_{\min}, q_{\max}\right)$$
+
+Trong đó:
+
+- x: giá trị float ban đầu;
+- S: scale;
+- Z: zero-point;
+- round: làm tròn về số nguyên gần nhất;
+- clamp: chặn kết quả để không vượt khỏi miền số nguyên;
+- q: giá trị sau quantization.
