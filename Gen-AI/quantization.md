@@ -1,4 +1,4 @@
-# Quantization: Từ FP32 đến INT8 và INT4
+<img width="964" height="227" alt="image" src="https://github.com/user-attachments/assets/6516ecc6-7e19-4bcf-aba5-2f0c36738483" /><img width="964" height="227" alt="image" src="https://github.com/user-attachments/assets/4eccf9db-65ac-4a6e-8586-d02ec3cea696" /># Quantization: Từ FP32 đến INT8 và INT4
 
 Một bài hướng dẫn đi từ trực giác, công thức đến mã Python để hiểu cách mô hình AI được nén xuống 8-bit hoặc 4-bit.
 
@@ -463,13 +463,104 @@ Giải pháp là chia tensor thành các vùng nhỏ hơn, rồi tính scale ri�
 
 ## XI. Per-tensor, per-channel và group-wise
 
+Granularity mô tả phạm vi mà một scale được dùng chung.
 
+Granularity càng mịn:
 
+- Sai số thường càng nhỏ;
+- Outlier bị cô lập tốt hơn;
+- Nhưng phải lưu nhiều scale hơn.
 
+**1. Per-tensor**
 
+Một scale cho toàn bộ tensor.
+```
+┌────────────────────────────┐
+│                            │
+│      Toàn bộ ma trận       │  dùng chung S
+│                            │
+└────────────────────────────┘
+```
+Ưu điểm:
 
+- đơn giản;
+- ít metadata;
+- dễ triển khai.
 
+Nhược điểm:
 
+- rất nhạy với outlier;
+- một giá trị lớn có thể làm giảm độ chính xác của cả tensor.
+
+**2. Per-channel**
+
+Mỗi hàng hoặc mỗi output channel có scale riêng.
+```
+Hàng 1: [ ... ... ... ... ]  → S₁
+Hàng 2: [ ... ... ... ... ]  → S₂
+Hàng 3: [ ... ... ... ... ]  → S₃
+```
+
+Ví dụ:
+```python
+import numpy as np
+
+weights = np.array(
+    [
+        [1.2, -0.5, 2.8, 0.9],
+        [-1.5, 1000.0, 0.3, -2.1],
+        [3.1, -2.2, -1.8, 1.1],
+    ],
+    dtype=np.float32,
+)
+
+abs_max_per_channel = np.max(
+    np.abs(weights),
+    axis=1,
+)
+
+scales = abs_max_per_channel / 127.0
+
+print(scales)
+```
+
+Kết quả gần đúng: `[0.022, 7.874, 0.024]`
+
+Outlier `1000` chỉ làm scale của hàng thứ hai trở nên lớn. Hai hàng còn lại vẫn giữ scale nhỏ và độ phân giải tốt. Per-channel thường là lựa chọn hiệu quả cho INT8.
+
+**3. Group-wise**
+
+Mỗi hàng tiếp tục được chia thành các nhóm nhỏ.
+
+Một hàng trọng số:
+```
+[ nhóm 1 ][ nhóm 2 ][ nhóm 3 ][ nhóm 4 ]
+    S₁        S₂        S₃        S₄
+```
+
+Group size phổ biến có thể là: 32, 64 hoặc 128 trọng số/nhóm
+
+Ví dụ với group size bằng 4:
+```
+[0.1, 0.2, 0.3, 0.4] [0.2, 0.1, 50.0, 0.3]
+         S₁                       S₂
+```
+
+Giá trị `50.0` chỉ ảnh hưởng đến nhóm thứ hai.
+
+Group-wise đặc biệt quan trọng khi dùng 4-bit vì INT4 chỉ có rất ít mức số nguyên để biểu diễn dữ liệu.
+
+**So sánh**
+
+| Cách chia | Số scale | Khả năng chống outlier | Metadata | Thường dùng |
+| :--- | :--- | :--- | :--- | :--- |
+| Per-tensor | Ít nhất | Thấp | Thấp | Trường hợp đơn giản |
+| Per-channel | Nhiều hơn | Tốt | Trung bình | INT8 |
+| Group-wise | Nhiều nhất | Rất tốt | Cao hơn | INT4 |
+
+Quy luật dễ nhớ: `Bit càng thấp thì thường cần chia nhóm càng nhỏ để giữ chất lượng.`
+
+## XII. Quantization 4-bit hoạt động như thế nào?
 
 
 
