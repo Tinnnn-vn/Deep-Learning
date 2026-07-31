@@ -245,7 +245,131 @@ B4: Clamp
 
 Kết quả:
 
-`1.2 trong FP32  →  44 trong INT8`
+`1.2 trong FP32 = 44 trong INT8`
+
+**Dựng lại giá trị float**
+```
+x̂ = S × (q - Z)
+x̂ = 0.02745 × 44
+x̂ ≈ 1.2078
+```
+
+Sai số: `1.2 - 1.2078 = -0.0078`
+
+Ta đã đổi một số float 32-bit thành số nguyên 8-bit, nhưng vẫn giữ được giá trị gần với ban đầu.
+
+Bảng minh họa
+
+Với tensor: `[1.2, -3.5, 0.8, 2.1, -1.9, 3.5]`. Ta có kết quả gần đúng:
+
+| Float ban đầu | INT8 | Float dựng lại | Sai số gần đúng |
+| :--- | :--- | :--- | :--- |
+| 1.2 | 44 | 1.213 | -0.013 |
+| -3.5 | -127 | -3.500 | 0.000 |
+| 0.8 | 29 | 0.799 | 0.001 |
+| 2.1 | 76 | 2.094 | 0.006 |
+| -1.9 | -69 | -1.902 | 0.002 |
+| 3.5 | 127 | 3.500 | 0.000 |
+
+Các con số có thể thay đổi một chút tùy cách chọn scale và quy tắc làm tròn.
+
+## VIII. Cài đặt symmetric INT8 bằng NumPy
+
+Đoạn mã dưới đây được viết lại để xử lý cả trường hợp tensor chỉ chứa số 0.
+```python
+import numpy as np
+
+def symmetric_quantize_int8(fp32_tensor: np.ndarray) -> tuple[np.ndarray, float]:
+    """
+    Chuyển một tensor float sang INT8 bằng symmetric quantization.
+    Trả về:
+        quantized_tensor: tensor INT8
+        scale: hệ số dùng để dựng lại giá trị gần đúng
+    """
+    fp32_tensor = np.asarray(fp32_tensor, dtype=np.float32)
+    q_min = -128
+    q_max = 127
+    abs_max = float(np.max(np.abs(fp32_tensor)))
+
+    # Tránh chia cho 0 khi toàn bộ tensor đều bằng 0.
+    if abs_max == 0.0:
+        quantized_tensor = np.zeros_like(fp32_tensor, dtype=np.int8)
+        return quantized_tensor, 1.0
+
+    scale = abs_max / q_max
+
+    quantized_tensor = np.round(fp32_tensor / scale)
+    quantized_tensor = np.clip(quantized_tensor,q_min,q_max).astype(np.int8)
+
+    return quantized_tensor, scale
+
+def dequantize_symmetric_int8(quantized_tensor: np.ndarray, scale: float) -> np.ndarray:
+    """Dựng lại tensor float xấp xỉ từ INT8."""
+    return quantized_tensor.astype(np.float32) * scale
+
+weights = np.array([1.2, -3.5, 0.8, 2.1, -1.9, 3.5], dtype=np.float32)
+
+quantized_weights, scale = symmetric_quantize_int8(weights)
+restored_weights = dequantize_symmetric_int8(quantized_weights,scale)
+
+print("Trọng số ban đầu:")
+print(weights)
+
+print("\nScale:")
+print(scale)
+
+print("\nTrọng số INT8:")
+print(quantized_weights)
+
+print("\nTrọng số dựng lại:")
+print(np.round(restored_weights, 4))
+
+print("\nSai số tuyệt đối:")
+print(np.round(np.abs(weights - restored_weights), 4))
+```
+
+**Giải thích mã**
+```python
+abs_max = np.max(np.abs(fp32_tensor))
+```
+Tìm giá trị có độ lớn lớn nhất. Ví dụ:
+```
+[-3.5, 2.1, 1.2]
+→ lấy trị tuyệt đối: [3.5, 2.1, 1.2]
+→ abs_max = 3.5
+
+scale = abs_max / 127
+```
+
+Chọn scale để giá trị lớn nhất gần chạm biên `127`.
+```python
+np.round(fp32_tensor / scale)
+```
+
+Đưa mỗi số float về một vị trí trong lưới số nguyên.
+```python
+np.clip(..., -128, 127)
+```
+
+Bảo đảm mọi giá trị đều hợp lệ trong INT8.
+```python
+.astype(np.int8)
+```
+
+Chuyển kiểu dữ liệu thật sự sang INT8.
+
+## IX. Weights-only quantization là gì?
+
+Trong một lớp neural network, phép tính quan trọng thường có dạng:
+
+$$Y = XW$$
+
+Trong đó:
+- X: input hoặc activation;
+- W: weight;
+- Y: output.
+
+
 
 
 
