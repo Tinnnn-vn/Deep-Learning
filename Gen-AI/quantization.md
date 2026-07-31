@@ -369,6 +369,106 @@ Trong đó:
 - W: weight;
 - Y: output.
 
+**Weight giống “kiến thức dài hạn”**
+
+Weight:
+- Được học trong quá trình training;
+- Gần như không thay đổi khi inference;
+- Chiếm phần lớn dung lượng của mô hình;
+- Được đọc đi đọc lại ở mỗi lần chạy.
+
+**Activation giống “dòng thông tin đang xử lý”**
+
+Activation:
+- Phụ thuộc vào prompt hiện tại;
+- Thay đổi theo từng token và từng layer;
+- Được tạo ra rồi tiếp tục truyền qua mạng;
+- Không phải toàn bộ đều được giữ lâu như weight.
+
+**Lựa chọn phổ biến**
+
+Trong weights-only quantization:
+```
+Weights      → INT8 hoặc INT4
+Activations  → FP16/BF16
+```
+
+Đây là một dạng mixed precision vì mô hình dùng nhiều định dạng số cùng lúc.
+
+**Dòng dữ liệu đơn giản hóa**
+```
+flowchart LR
+    A[Activation FP16/BF16] --> D[Nhân ma trận]
+    B[Weight INT8/INT4 trong VRAM] --> C[Giải lượng tử hóa tạm thời]
+    S[Scale] --> C
+    C --> D
+    D --> Y[Output FP16/BF16]
+```
+
+Quá trình có thể hiểu như sau:
+
+- Weight được lưu ở dạng nén trong VRAM.
+- GPU đọc weight cùng scale.
+- Weight được chuyển thành giá trị xấp xỉ phù hợp cho kernel tính toán.
+- Phép nhân ma trận được thực hiện.
+- Giá trị tạm không cần được lưu thành một bản FP16 đầy đủ trong VRAM.
+
+**Lưu Ý**
+
+Dequantization không khôi phục trọng số gốc một cách hoàn hảo.
+
+Ví dụ:
+```
+Weight ban đầu:      1.2000
+Weight dựng lại:     1.2078
+```
+
+GPU tính toán bằng giá trị đã được dựng lại hoặc bằng kernel hỗn hợp tương đương. Lợi ích chính đến từ:
+- Giảm bộ nhớ lưu weight;
+- Giảm băng thông đọc weight;
+- Tận dụng kernel/phần cứng được tối ưu.
+
+Tốc độ thực tế còn phụ thuộc vào GPU, CPU, kernel và định dạng quantization cụ thể.
+
+## X. Vì sao outlier có thể phá hỏng quantization?
+
+Outlier là giá trị có độ lớn vượt trội so với phần còn lại.
+
+Xét tensor: `[1.2, -3.5, 0.8, 2.1, -1.9, 1000.0]`
+
+Nếu dùng một scale cho toàn bộ tensor:
+```
+abs_max = 1000
+scale = 1000 / 127 ≈ 7.87
+```
+
+Bây giờ thử quantize các giá trị nhỏ:
+```
+1.2 / 7.87 ≈ 0.15  → làm tròn thành 0
+0.8 / 7.87 ≈ 0.10  → làm tròn thành 0
+-1.9 / 7.87 ≈ -0.24 → làm tròn thành 0
+```
+
+Một giá trị `1000` đã khiến các giá trị nhỏ bị dồn về `0`.
+
+Trước quantization: `[1.2, -3.5, 0.8, 2.1, -1.9, 1000.0]`
+
+Sau quantization: `[0, 0, 0, 0, 0, 127]`
+
+Thông tin quan trọng gần như biến mất. Vấn đề không nằm ở công thức. Vấn đề nằm ở việc:
+
+`Một scale đang phải phục vụ một nhóm số có độ lớn quá khác nhau.`
+
+Giải pháp là chia tensor thành các vùng nhỏ hơn, rồi tính scale riêng cho từng vùng.
+
+## XI. Per-tensor, per-channel và group-wise
+
+
+
+
+
+
+
 
 
 
