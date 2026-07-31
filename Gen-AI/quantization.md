@@ -223,13 +223,29 @@ clamp(150, -128, 127) = 127
 
 Nếu không chặn, giá trị có thể bị tràn số và cho kết quả sai hoàn toàn.
 
+## VII. Ví dụ tính tay từ FP32 sang INT8
 
+Cho: `x = 1.2, S = 0.02745, Z = 0`
 
+B1: Chia cho scale
+```
+1.2 / 0.02745 ≈ 43.72
+```
+B2: Cộng zero-point
+```
+43.72 + 0 = 43.72
+```
+B3: Làm tròn
+```
+round(43.72) = 44
+```
+B4: Clamp
 
+`44` vẫn nằm trong `[-128, 127]`, nên giữ nguyên.
 
+Kết quả:
 
-
-
+`1.2 trong FP32  →  44 trong INT8`
 
 
 
