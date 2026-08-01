@@ -5,22 +5,39 @@
 ## Mục lục
 
 I. [Quantization là gì?](#I-quantization-là-gì)
+
 II. [Tại sao mô hình AI cần quantization?](#II-tại-sao-mô-hình-ai-cần-quantization)
+
 III. [FP32 lưu một con số như thế nào?](#III-fp32-lưu-một-con-số-như-thế-nào)
+
 IV. [Ý tưởng cốt lõi: đổi từ số thực sang các ô số nguyên](#IV-ý-tưởng-cốt-lõi-đổi-từ-số-thực-sang-các-ô-số-nguyên)
+
 V. [Scale và Zero-point thực sự có ý nghĩa gì?](#V-scale-và-zero-point-thực-sự-có-ý-nghĩa-gì)
+
 VI. [Công thức quantization và dequantization](#VI-công-thức-quantization-và-dequantization)
+
 VII. [Ví dụ tính tay từ FP32 sang INT8](#VII-ví-dụ-tính-tay-từ-fp32-sang-int8)
+
 VIII. [Cài đặt symmetric INT8 bằng NumPy](#VIII-cài-đặt-symmetric-int8-bằng-numpy)
+
 IX. [Weights-only quantization là gì?](#IX-weights-only-quantization-là-gì)
+
 X. [Vì sao outlier có thể phá hỏng quantization?](#X-vì-sao-outlier-có-thể-phá-hỏng-quantization)
+
 XI. [Per-tensor, per-channel và group-wise](#XI-per-tensor-per-channel-và-group-wise)
+
 XII. [Quantization 4-bit hoạt động như thế nào?](#XII-quantization-4-bit-hoạt-động-như-thế-nào)
+
 XIII. [Đóng gói hai số 4-bit vào một byte](#XIII-đóng-gói-hai-số-4-bit-vào-một-byte)
+
 XIV. [PTQ và QAT khác nhau ra sao?](#XIV-ptq-và-qat-khác-nhau-ra-sao)
+
 XV. [Toàn bộ pipeline nhìn trong một sơ đồ](#XV-toàn-bộ-pipeline-nhìn-trong-một-sơ-đồ)
+
 XVI. [Những hiểu lầm thường gặp](#XVI-những-hiểu-lầm-thường-gặp)
+
 XVII. [Bài thực hành nhỏ](#XVII-bài-thực-hành-nhỏ)
+
 XVIII. [Tóm tắt kiến thức](#XVIII-tóm-tắt-kiến-thức)
 
 ---
