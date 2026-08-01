@@ -561,8 +561,219 @@ Group-wise đặc biệt quan trọng khi dùng 4-bit vì INT4 chỉ có rất �
 Quy luật dễ nhớ: `Bit càng thấp thì thường cần chia nhóm càng nhỏ để giữ chất lượng.`
 
 ## XII. Quantization 4-bit hoạt động như thế nào?
+INT4 chỉ có 16 trạng thái.
+
+Nếu dùng dạng có dấu đối xứng, ta thường làm việc với miền gần như: `-8 đến 7`
+
+Trong ví dụ symmetric đơn giản, scale có thể được tính bằng:
+
+$$\[S = \frac{\max(|x|)}{7}\]$$
+
+So với INT8 có khoảng 256 trạng thái, 4-bit chỉ có 16 trạng thái. Vì thế mỗi “bậc thang” lớn hơn nhiều.
+
+**Ví dụ**
+
+```python
+weights = [0.51, 0.58, -1.2, 2.1]
+```
+
+Giá trị lớn nhất:
+
+```text
+abs_max = 2.1
+```
+
+Scale:
+
+```text
+S = 2.1 / 7 = 0.3
+```
+
+Quantize:
+
+```text
+0.51 / 0.3 = 1.70  → 2
+0.58 / 0.3 = 1.93  → 2
+-1.2 / 0.3 = -4.0  → -4
+2.1 / 0.3 = 7.0    → 7
+```
+
+Kết quả:
+
+```text
+[2, 2, -4, 7]
+```
+
+Hai số khác nhau là `0.51` và `0.58` đã trở thành cùng một giá trị.
+
+Đây không phải lỗi của chương trình. Đây là giới hạn tự nhiên của việc chỉ dùng 4 bit.
+
+**Mã minh họa**
+
+```python
+import numpy as np
+
+weights_group = np.array(
+    [0.51, 0.58, -1.2, 2.1],
+    dtype=np.float32,
+)
+
+q_min = -8
+q_max = 7
+
+abs_max = np.max(np.abs(weights_group))
+scale = abs_max / q_max
+
+quantized = np.round(weights_group / scale)
+quantized = np.clip(
+    quantized,
+    q_min,
+    q_max,
+).astype(np.int8)
+
+restored = quantized.astype(np.float32) * scale
+
+print("Ban đầu:", weights_group)
+print("Scale:", scale)
+print("INT4 biểu diễn tạm bằng int8:", quantized)
+print("Dựng lại:", restored)
+```
+
+Trong NumPy, ta dùng `int8` để chứa các giá trị `[-8, 7]` cho tiện thao tác. Điều đó chưa tự động tạo ra mức tiết kiệm 4-bit.
+
+Để thật sự tiết kiệm bộ nhớ, ta còn phải "đóng gói bit".
+
+## XIII. Đóng gói hai số 4-bit vào một byte
+
+Một byte có 8 bit:
+
+```text
+[b7 b6 b5 b4 b3 b2 b1 b0]
+```
+
+Mỗi số 4-bit chỉ cần bốn vị trí:
+
+```text
+Nửa trái:  [b7 b6 b5 b4]
+Nửa phải:  [b3 b2 b1 b0]
+```
+
+Vì vậy, một byte có thể chứa hai số 4-bit.
+
+**Bước 1: Chuyển miền có dấu sang miền không dấu**
+
+Giả sử giá trị INT4 nằm trong: `[-8, 7]`
+
+Ta cộng 8 để đưa về: `[0, 15]`
+
+Ví dụ:
+
+```
+ 2 + 8 = 10  → 1010₂
+-4 + 8 = 4   → 0100₂
+```
+
+**Bước 2: Đưa một số vào bốn bit cao**
+
+```python
+second << 4
+```
+
+Nếu `second = 4`:
+
+```
+00000100
+dịch trái 4 bit
+01000000
+```
+
+**Bước 3: Ghép hai nửa bằng phép OR**
+
+```python
+packed = (second << 4) | first
+```
+
+Ví dụ:
+
+```
+second << 4 = 01000000
+first       = 00001010
+OR          = 01001010
+```
+
+`01001010₂` bằng `74` trong hệ thập phân.
+
+**Mã đóng gói và giải nén**
+
+```python
+def int4_to_uint4(value: int) -> int:
+    """Đổi giá trị [-8, 7] thành [0, 15]."""
+    if not -8 <= value <= 7:
+        raise ValueError("Giá trị INT4 phải nằm trong [-8, 7].")
+    return value + 8
 
 
+def uint4_to_int4(value: int) -> int:
+    """Đổi giá trị [0, 15] trở lại [-8, 7]."""
+    if not 0 <= value <= 15:
+        raise ValueError("Giá trị UINT4 phải nằm trong [0, 15].")
+    return value - 8
+
+
+def pack_two_int4(first: int, second: int) -> int:
+    """
+    Đóng gói hai số INT4 vào một byte.
+
+    first nằm ở 4 bit thấp.
+    second nằm ở 4 bit cao.
+    """
+    first_u = int4_to_uint4(first)
+    second_u = int4_to_uint4(second)
+
+    return (second_u << 4) | first_u
+
+
+def unpack_two_int4(packed: int) -> tuple[int, int]:
+    """Lấy lại hai số INT4 từ một byte."""
+    if not 0 <= packed <= 255:
+        raise ValueError("Byte phải nằm trong [0, 255].")
+
+    first_u = packed & 0b00001111
+    second_u = (packed >> 4) & 0b00001111
+
+    return (
+        uint4_to_int4(first_u),
+        uint4_to_int4(second_u),
+    )
+
+
+packed = pack_two_int4(2, -4)
+first, second = unpack_two_int4(packed)
+
+print("Byte đã đóng gói:", packed)
+print(f"Dạng nhị phân: {packed:08b}")
+print("Hai số lấy lại:", first, second)
+```
+
+Kết quả:
+
+```text
+Byte đã đóng gói: 74
+Dạng nhị phân: 01001010
+Hai số lấy lại: 2 -4
+```
+
+Trong mô hình thực tế, dữ liệu thường gồm:
+
+```
+Mảng byte đã đóng gói
++
+Mảng scale cho từng channel/group
++
+Có thể có zero-point hoặc metadata khác
+```
+
+Do đó, mô hình 4-bit không phải lúc nào cũng đúng bằng chính xác `0.5 byte × số tham số`. Scale và metadata làm kích thước thực tế lớn hơn một chút.
 
 
 
