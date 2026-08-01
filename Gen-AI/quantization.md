@@ -775,5 +775,109 @@ Có thể có zero-point hoặc metadata khác
 
 Do đó, mô hình 4-bit không phải lúc nào cũng đúng bằng chính xác `0.5 byte × số tham số`. Scale và metadata làm kích thước thực tế lớn hơn một chút.
 
+## XIV. PTQ và QAT khác nhau ra sao?
 
+Quantization có thể được áp dụng sau khi mô hình đã train xong hoặc được mô phỏng ngay trong lúc train.
+
+**1. PTQ — Post-Training Quantization**
+
+PTQ nghĩa là:
+
+`Train mô hình trước, quantize sau.`
+
+Pipeline đơn giản:
+
+```
+Mô hình FP16/FP32 đã train
+        ↓
+Thu thập thống kê hoặc hiệu chỉnh
+        ↓
+Tính scale/zero-point
+        ↓
+Chuyển weight sang INT8/INT4
+        ↓
+Đánh giá chất lượng
+```
+
+**Calibration là gì?**
+
+Calibration không phải là train lại toàn bộ mô hình.
+
+Ta cho một tập dữ liệu đại diện chạy qua mô hình để quan sát:
+
+- phạm vi giá trị;
+- phân bố activation;
+- ảnh hưởng của outlier;
+- cách chọn scale phù hợp.
+
+Không phải mọi phương pháp weights-only đều dùng calibration theo cùng một cách, nhưng ý tưởng chung là dùng một lượng dữ liệu nhỏ để quyết định cách quantize tốt hơn.
+
+**Ưu điểm**
+
+- nhanh hơn nhiều so với train lại;
+- không cần pipeline huấn luyện đầy đủ;
+- chi phí thấp;
+- là điểm bắt đầu hợp lý cho phần lớn bài toán quantize LLM.
+
+**Hạn chế**
+
+Mô hình không được học để tự thích nghi với sai số làm tròn.
+
+Nếu một trọng số quan trọng bị thay đổi nhiều, PTQ không tự động điều chỉnh các trọng số khác để bù lại.
+
+---
+
+**2. QAT — Quantization-Aware Training**
+
+QAT nghĩa là:
+
+`Mô phỏng quantization trong quá trình train hoặc fine-tune.`
+
+Trong forward pass:
+
+```
+Weight FP32
+    ↓
+Fake quantize
+    ↓
+Fake dequantize
+    ↓
+Weight FP32 đã mang sai số lượng tử hóa
+    ↓
+Tính output và loss
+```
+
+“Fake” ở đây có nghĩa là:
+
+- weight vẫn được giữ ở dạng float để phục vụ cập nhật gradient;
+- nhưng forward pass cố tình mô phỏng việc làm tròn và giới hạn miền số.
+
+Nhờ đó, mô hình có thể học cách điều chỉnh trọng số để giảm ảnh hưởng của quantization.
+
+**Ưu điểm**
+
+- có thể giữ chất lượng tốt hơn khi PTQ làm giảm hiệu năng quá nhiều;
+- hữu ích cho mô hình nhạy với sai số;
+- phù hợp khi yêu cầu độ chính xác rất nghiêm ngặt.
+
+**Hạn chế**
+
+- cần dữ liệu;
+- cần fine-tuning/training;
+- tốn thời gian và tài nguyên hơn;
+- pipeline phức tạp hơn.
+
+**Bảng lựa chọn**
+
+| Tiêu chí | PTQ | QAT |
+|---|---|---|
+| Thời điểm quantize | Sau training | Trong training/fine-tuning |
+| Chi phí | Thấp hơn | Cao hơn |
+| Độ phức tạp | Dễ hơn | Khó hơn |
+| Mô hình học thích nghi với sai số | Không | Có |
+| Nên thử đầu tiên cho LLM | Có | Chỉ khi cần |
+
+Quy tắc thực tế:
+
+`Hãy bắt đầu bằng PTQ. Chỉ cân nhắc QAT khi đã đo được rằng PTQ làm giảm chất lượng ở mức không thể chấp nhận.`
 
