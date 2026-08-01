@@ -1,4 +1,4 @@
-<img width="964" height="227" alt="image" src="https://github.com/user-attachments/assets/6516ecc6-7e19-4bcf-aba5-2f0c36738483" /><img width="964" height="227" alt="image" src="https://github.com/user-attachments/assets/4eccf9db-65ac-4a6e-8586-d02ec3cea696" /># Quantization: Từ FP32 đến INT8 và INT4
+# Quantization: Từ FP32 đến INT8 và INT4
 
 Một bài hướng dẫn đi từ trực giác, công thức đến mã Python để hiểu cách mô hình AI được nén xuống 8-bit hoặc 4-bit.
 
