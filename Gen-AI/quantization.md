@@ -958,3 +958,55 @@ Ta cần đo ít nhất ba yếu tố:
 3. Tốc độ: token/giây có thực sự tăng trên phần cứng đang dùng không?
 
 Một mô hình ít bit hơn không tự động đồng nghĩa với nhanh hơn trên mọi thiết bị. Phần cứng và kernel phải hỗ trợ tốt định dạng đó.
+
+## XVI. Những hiểu lầm thường gặp
+
+**Hiểu lầm 1: “Dequantization lấy lại chính xác FP32 ban đầu”**
+
+Dequantization chỉ tạo ra giá trị xấp xỉ:
+
+```
+x → q → x̂
+```
+
+Thông thường:
+
+```
+x̂ ≠ x
+```
+
+**Hiểu lầm 2: “Đổi mảng NumPy sang int8 là đã có mô hình INT4”**
+
+Nếu các giá trị INT4 được chứa trong kiểu `int8`, mỗi phần tử vẫn chiếm 8 bit. Muốn thật sự đạt 4 bit, cần đóng gói hai giá trị vào một byte hoặc dùng định dạng/kernel chuyên dụng.
+
+**Hiểu lầm 3: “Càng ít bit thì lúc nào cũng càng tốt”**
+
+Giảm bit giúp tiết kiệm bộ nhớ nhưng có thể:
+
+- tăng sai số;
+- làm giảm chất lượng;
+- cần thêm metadata;
+- không tăng tốc nếu phần cứng không hỗ trợ.
+
+**Hiểu lầm 4: “Một scale cho cả mô hình là đủ”**
+
+Thường không đủ, đặc biệt khi có outlier.
+
+INT8 thường cần ít nhất granularity tốt như per-channel. INT4 thường cần group-wise để giữ chất lượng.
+
+**Hiểu lầm 5: “Quantize weight là không còn tính toán float”**
+
+Nhiều hệ thống lưu weight ở INT8/INT4 nhưng vẫn sử dụng activation hoặc accumulation ở FP16, BF16, FP32 hay kiểu hỗn hợp tùy kernel.
+
+**Hiểu lầm 6: “Kích thước INT4 luôn chính xác bằng một phần tư FP16”**
+
+Đó chỉ là ước lượng cho dữ liệu weight thô.
+
+Kích thước thực tế còn có:
+
+- scale;
+- zero-point nếu dùng;
+- thông tin nhóm;
+- padding;
+- định dạng file;
+- tensor không được quantize.
