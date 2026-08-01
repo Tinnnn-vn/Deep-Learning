@@ -921,3 +921,40 @@ Quy tắc thực tế:
 
 `Hãy bắt đầu bằng PTQ. Chỉ cân nhắc QAT khi đã đo được rằng PTQ làm giảm chất lượng ở mức không thể chấp nhận.`
 
+## XV. Toàn bộ pipeline nhìn trong một sơ đồ
+
+```mermaid
+flowchart TD
+    A[Mô hình FP16 hoặc FP32] --> B{Chọn chiến lược}
+    B -->|PTQ| C[Thu thập thống kê/calibration]
+    B -->|QAT| D[Fine-tune với fake quantization]
+
+    C --> E[Chọn bit-width]
+    D --> E
+
+    E -->|INT8| F[Thường dùng per-channel]
+    E -->|INT4| G[Thường dùng group-wise]
+
+    F --> H[Tính scale và zero-point nếu có]
+    G --> H
+
+    H --> I[Round và clamp]
+    I --> J[Đóng gói dữ liệu nếu cần]
+    J --> K[Lưu weight nén cùng metadata]
+    K --> L[Chạy inference bằng kernel phù hợp]
+    L --> M[Đánh giá chất lượng và tốc độ]
+```
+
+Khi triển khai một mô hình thật, ta không nên chỉ hỏi:
+
+```
+Mô hình đã nhỏ hơn chưa?
+```
+
+Ta cần đo ít nhất ba yếu tố:
+
+1. Dung lượng: giảm được bao nhiêu VRAM hoặc RAM?
+2. Chất lượng: độ chính xác, perplexity hoặc kết quả tác vụ thay đổi thế nào?
+3. Tốc độ: token/giây có thực sự tăng trên phần cứng đang dùng không?
+
+Một mô hình ít bit hơn không tự động đồng nghĩa với nhanh hơn trên mọi thiết bị. Phần cứng và kernel phải hỗ trợ tốt định dạng đó.
