@@ -1,5 +1,7 @@
 # Quantization: Từ FP32 đến INT8 và INT4
 
+> Vấn đề: Các mô hình ngôn ngữ lớn (LLM) thường quá lớn để chạy trên phần cứng dành cho người tiêu dùng. Các mô hình này có thể vượt quá hàng tỷ tham số và thường cần GPU với dung lượng VRAM lớn để tăng tốc quá trình suy luận.
+> 
 > Một bài hướng dẫn đi từ trực giác, công thức đến mã Python để hiểu cách mô hình AI được nén xuống 8-bit hoặc 4-bit.
 
 ## Mục lục
