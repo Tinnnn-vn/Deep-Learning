@@ -1,4 +1,4 @@
-# Direct Preference Optimization (DPO) — Dạy mô hình biết câu trả lời nào tốt hơn
+# Direct Preference Optimization (DPO) — Dạy mô hình nhận biết câu trả lời nào tốt hơn
 
 ## Mục lục
 
@@ -20,3 +20,6 @@
 16. [Tóm tắt một trang](#16-tóm-tắt-một-trang)
 
 ---
+
+## 1. DPO đang giải quyết vấn đề gì?
+
