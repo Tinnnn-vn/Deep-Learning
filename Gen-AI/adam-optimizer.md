@@ -1,9 +1,12 @@
+```
 Bạn biết thuật toán Gradient Descent. Bạn biết công thức: trọng số mới = trọng số cũ - tốc độ học * độ dốc. Nó đơn giản, hiệu quả. Nhưng đó không phải là thứ tạo nên sức mạnh của AI hiện đại.
 
 Trong mọi mô hình tiên tiến, trong mọi kịch bản huấn luyện hiệu năng cao, bạn đều thấy cùng một cái tên: Adam. Bạn được khuyên chỉ cần sử dụng nó. Nó là mặc định. Nó "tốt hơn".
 
 Nhưng tại sao?
 
+Dưới đây là toàn bộ bí mật: Adam không phải là một ý tưởng phức tạp duy nhất. Nó thực chất là sự kết hợp của ba ý tưởng đơn giản, được ghép lại với nhau để giải quyết ba vấn đề cụ thể.
+```
 # Adam Optimizer – Giải thích dễ hiểu từ con số 0
 
 Adam là một thuật toán giúp mô hình AI **điều chỉnh các tham số trong lúc học**. Có thể hình dung nó như một người lái xe thông minh:
