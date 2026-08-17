@@ -333,14 +333,7 @@ $$
 ### Bước 1: `A` nén đầu vào
 
 $$
-Ax =
-\begin{bmatrix}
-1 & 0 & 2 \\
-0 & 3 & 0
-\end{bmatrix}
-\begin{bmatrix}1 \\ 2 \\ 3\end{bmatrix}
-=
-\begin{bmatrix}7 \\ 6\end{bmatrix}
+Ax = \begin{bmatrix} 1 & 0 & 2 \\ 0 & 3 & 0 \end{bmatrix} \begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix} = \begin{bmatrix} 7 \\ 6 \end{bmatrix}
 $$
 
 Vector 3 chiều đã trở thành vector 2 chiều.
@@ -348,26 +341,13 @@ Vector 3 chiều đã trở thành vector 2 chiều.
 ### Bước 2: `B` mở rộng trở lại
 
 $$
-B(Ax) =
-\begin{bmatrix}
-1 & 0 \\
-0 & 0 \\
-0 & 2 \\
-1 & 1
-\end{bmatrix}
-\begin{bmatrix}7 \\ 6\end{bmatrix}
-=
-\begin{bmatrix}7 \\ 0 \\ 12 \\ 13\end{bmatrix}
+B(Ax) = \begin{bmatrix} 1 & 0 \\ 0 & 0 \\ 0 & 2 \\ 1 & 1 \end{bmatrix} \begin{bmatrix} 7 \\ 6 \end{bmatrix} = \begin{bmatrix} 7 \\ 0 \\ 12 \\ 13 \end{bmatrix}
 $$
 
 ### Bước 3: Nhân hệ số scale
 
 $$
-\frac{\alpha}{r}B(Ax)
-= 2
-\begin{bmatrix}7 \\ 0 \\ 12 \\ 13\end{bmatrix}
-=
-\begin{bmatrix}14 \\ 0 \\ 24 \\ 26\end{bmatrix}
+\frac{\alpha}{r}B(Ax) = 2 \begin{bmatrix} 7 \\ 0 \\ 12 \\ 13 \end{bmatrix} = \begin{bmatrix} 14 \\ 0 \\ 24 \\ 26 \end{bmatrix}
 $$
 
 Đây là phần điều chỉnh mà LoRA cộng vào kết quả của lớp gốc.
