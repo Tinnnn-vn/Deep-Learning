@@ -93,8 +93,8 @@ Nếu $\beta_1=0.9$, Adam giữ `90%` thông tin cũ và nhận `10%` thông tin
 
 Không phải tham số nào cũng có gradient giống nhau:
 
-- gradient lớn: tham số rất nhạy, bước cập nhật cần thận trọng;
-- gradient nhỏ: tham số ít nhạy, có thể cần bước tương đối mạnh hơn.
+- Gradient lớn: tham số rất nhạy, bước cập nhật cần thận trọng;
+- Gradient nhỏ: tham số ít nhạy, có thể cần bước tương đối mạnh hơn.
 
 Adam theo dõi trung bình của **bình phương gradient**:
 
@@ -148,3 +148,168 @@ $$
 Khi `t` còn nhỏ, phép sửa có tác dụng rõ rệt. Khi `t` lớn, $\beta^t$ tiến gần `0`, mẫu số tiến gần `1` và việc hiệu chỉnh gần như không còn ảnh hưởng.
 
 ---
+
+## 5. Công thức hoàn chỉnh của Adam
+
+Sau khi có hướng và độ lớn đã hiệu chỉnh, Adam cập nhật tham số bằng:
+
+$$
+\theta_t=\theta_{t-1}-\eta\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}
+$$
+
+| Ký hiệu | Ý nghĩa |
+|---|---|
+| $\theta_t$ | Tham số sau bước cập nhật thứ `t` |
+| $\eta$ | Learning rate cơ sở |
+| $\hat m_t$ | Hướng đi đã được làm mượt và hiệu chỉnh |
+| $\hat v_t$ | Độ lớn gradient đã được làm mượt và hiệu chỉnh |
+| $\epsilon$ | Số rất nhỏ để tránh chia cho `0` |
+
+Có thể đọc công thức cuối bằng lời:
+
+> Lấy hướng đi ổn định từ $\hat m$, rồi chia cho độ lớn gradient từ $\sqrt{\hat v}$ để tự điều chỉnh bước đi.
+
+---
+
+## 6. Một vòng lặp Adam diễn ra ra sao?
+
+Giả sử ta đang ở bước `t`:
+
+1. Tính gradient mới $g_t$.
+2. Cập nhật $m_t$ để ghi nhớ hướng.
+3. Cập nhật $v_t$ để ghi nhớ độ lớn gradient.
+4. Hiệu chỉnh $m_t$ và $v_t$ vì chúng khởi đầu từ `0`.
+5. Dùng công thức Adam để cập nhật tham số.
+6. Lặp lại cho bước tiếp theo.
+
+Mã giả:
+
+```python
+m = 0
+v = 0
+t = 0
+
+for each_training_step:
+    t = t + 1
+    g = calculate_gradient()
+
+    m = beta1 * m + (1 - beta1) * g
+    v = beta2 * v + (1 - beta2) * g**2
+
+    m_hat = m / (1 - beta1**t)
+    v_hat = v / (1 - beta2**t)
+
+    parameter = parameter - learning_rate * m_hat / (sqrt(v_hat) + epsilon)
+```
+
+---
+
+## 7. Ví dụ tính tay ở bước đầu tiên
+
+Chọn các giá trị:
+
+```text
+gradient g = 4
+beta1 = 0.9
+beta2 = 0.999
+m = 0, v = 0, t = 1
+```
+
+### Bước 1: Tính moment bậc nhất
+
+$$
+m_1=0.9\times0+0.1\times4=0.4
+$$
+
+### Bước 2: Tính moment bậc hai
+
+$$
+v_1=0.999\times0+0.001\times4^2=0.016
+$$
+
+### Bước 3: Hiệu chỉnh sai lệch
+
+$$
+\hat m_1=\frac{0.4}{1-0.9}=4
+$$
+
+$$
+\hat v_1=\frac{0.016}{1-0.999}=16
+$$
+
+### Bước 4: Tìm phần cập nhật
+
+Bỏ qua $\epsilon$ trong phép tính minh họa:
+
+$$
+\frac{\hat m_1}{\sqrt{\hat v_1}}
+=\frac{4}{\sqrt{16}}
+=1
+$$
+
+Vì thế, độ lớn cập nhật ở bước này gần bằng learning rate $\eta$. Phép tính cho thấy hiệu chỉnh bias đã đưa hai giá trị khởi đầu về đúng quy mô của gradient.
+
+---
+
+## 8. Adam khác Gradient Descent ở đâu?
+
+| Đặc điểm | Gradient Descent | Adam |
+|---|---|---|
+| Nhớ gradient cũ | Không | Có |
+| Giảm dao động | Hạn chế | Tốt hơn nhờ $m$ |
+| Learning rate cho từng tham số | Không | Có, nhờ $v$ |
+| Sửa sai lệch lúc khởi đầu | Không cần | Có |
+| Bộ nhớ cần thêm | Ít | Phải lưu $m$ và $v$ cho mỗi tham số |
+
+Adam thường là lựa chọn khởi đầu tốt trong Deep Learning, nhưng không phải lúc nào cũng tốt nhất. Kết quả còn phụ thuộc vào mô hình, dữ liệu, learning rate và cách huấn luyện.
+
+---
+
+## 9. Các giá trị thường gặp
+
+```python
+learning_rate = 0.001
+beta1 = 0.9
+beta2 = 0.999
+epsilon = 1e-8
+```
+
+Trong PyTorch:
+
+```python
+optimizer = torch.optim.Adam(
+    model.parameters(),
+    lr=0.001,
+    betas=(0.9, 0.999),
+    eps=1e-8,
+)
+```
+
+Đây là điểm bắt đầu phổ biến, không phải bộ số đúng cho mọi bài toán.
+
+Nếu cần weight decay để hạn chế trọng số tăng quá lớn, `AdamW` thường là biến thể đáng cân nhắc:
+
+```python
+optimizer = torch.optim.AdamW(
+    model.parameters(),
+    lr=0.001,
+    weight_decay=0.01,
+)
+```
+
+---
+
+## 10. Ghi nhớ Adam bằng bốn câu
+
+1. **Gradient** cho biết hướng xuống dốc tại thời điểm hiện tại.
+2. **$m$** nhớ hướng đi trung bình để chuyển động ổn định hơn.
+3. **$v$** nhớ độ lớn gradient để chỉnh bước học cho từng tham số.
+4. **Bias correction** sửa ảnh hưởng của việc $m$ và $v$ bắt đầu từ `0`.
+
+Tóm lại:
+
+$$
+\boxed{\text{Adam}=\text{ghi nhớ hướng}+\text{tự chỉnh bước}+\text{sửa sai lệch ban đầu}}
+$$
+
+Adam không phải phép thuật. Nó chỉ kết hợp nhiều ý tưởng nhỏ, mỗi ý tưởng giải quyết một vấn đề cụ thể trong quá trình huấn luyện mô hình.
