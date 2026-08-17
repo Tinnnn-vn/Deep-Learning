@@ -893,4 +893,4 @@ Token ID
 → lặp lại
 ```
 
-Phần khó nhất không nằm ở số lượng dòng mã, mà ở việc theo dõi **ý nghĩa và kích thước tensor**. Khi học luôn tự hỏi “tensor này đang chứa gì?” và “shape hiện tại là gì?”, toàn bộ kiến trúc sẽ trở nên logic hơn rất nhiều.
+Phần khó nhất không nằm ở số lượng dòng mã, mà ở việc theo dõi **ý nghĩa và kích thước tensor**. Khi học luôn tự hỏi “tensor này đang chứa gì?” và “shape hiện tại là gì?”, toàn bộ kiến trúc sẽ trở nên logic và dễ hiểu hơn rất nhiều.
