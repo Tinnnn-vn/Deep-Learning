@@ -21,7 +21,7 @@ Lặp nhiệm vụ này trên lượng văn bản rất lớn giúp mô hình h�
 
 ---
 
-## 1. Bản đồ toàn bộ mô hình
+## 1. Kiến trúc toàn bộ mô hình
 
 ```mermaid
 flowchart TD
