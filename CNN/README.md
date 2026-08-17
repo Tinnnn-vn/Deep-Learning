@@ -6,8 +6,9 @@ Chào mừng bạn đến với tài liệu hướng dẫn về **CNN và các k
 
 ## 📌 Nội Dung Tổng Quan
 
-Tài liệu bao gồm các tệp PDF tóm tắt chi tiết cấu trúc, thông số và các đóng góp quan trọng của từng mô hình:
+Tài liệu bao gồm các tệp PDF tóm tắt chi tiết khái niệm cơ bản, cấu trúc, thông số và các đóng góp quan trọng của từng mô hình:
 
+* **`00_Khon_Niem_CNN.pdf`**: Giải thích khái niệm CNN là gì, cách nó "bắt chước" hệ thống thị giác con người và 3 thành phần cốt lõi: Lớp Tích chập (Convolutional Layer), Lớp Kích hoạt (ReLU), và Lớp Gộp (Pooling Layer).
 * **`1998_LeNet5.pdf`**: Nền móng của mạng tích chập (dành cho bài toán nhận dạng chữ số viết tay MNIST).
 * **`2012_AlexNet.pdf`**: Bước ngoặt lịch sử khởi đầu kỷ nguyên Deep Learning và sự bùng nổ của GPU.
 * **`2014_VGG16.pdf`**: Tối ưu hóa kiến trúc bằng cách dùng bộ lọc nhỏ $3 \times 3$ và tăng độ sâu mạng.
@@ -17,21 +18,23 @@ Tài liệu bao gồm các tệp PDF tóm tắt chi tiết cấu trúc, thông s
 
 ## 🚀 Tóm Tắt Nhanh Các Mạng CNN Kinh Điển
 
-| Mô hình | Năm | Số lớp có trọng số | Điểm nổi bật chính |
-| :--- | :---: | :---: | :--- |
-| **LeNet-5** | 1998 | 7 lớp | Sử dụng kiến trúc cơ bản: *Convolution $\rightarrow$ Subsampling $\rightarrow$ Full Connection*. |
-| **AlexNet** | 2012 | 8 lớp | Dùng hàm kích hoạt **ReLU**, kỹ thuật **Dropout**, **Max Pooling** và huấn luyện trên GPU. |
-| **VGG16** | 2014 | 16 lớp | Chuẩn hóa bộ lọc kích thước nhỏ $3 \times 3$ xếp chồng lên nhau, giúp mạng sâu nhưng nhất quán. |
-| **ResNet** | 2015 | 18, 34, 50, 101, 152+ lớp | Giới thiệu **Residual Block** & **Skip Connection**, mở đường cho việc huấn luyện các mạng cực sâu. |
+| Mô hình / Khái niệm | Năm | Điểm nổi bật chính |
+| :--- | :---: | :--- |
+| **Khái niệm CNN** | N/A | Mô phỏng cách con người nhìn qua việc nhận diện đường nét, góc cạnh, rồi ghép lại. Bao gồm Lớp Tích chập (Kernel), ReLU (Bộ lọc thông tin), Pooling (Tóm tắt ý chính). |
+| **LeNet-5** | 1998 | Sử dụng kiến trúc cơ bản: *Convolution $\rightarrow$ Subsampling $\rightarrow$ Full Connection*. Số lớp có trọng số: 7. |
+| **AlexNet** | 2012 | Dùng hàm kích hoạt **ReLU**, kỹ thuật **Dropout**, **Max Pooling** và huấn luyện trên GPU. Số lớp có trọng số: 8. |
+| **VGG16** | 2014 | Chuẩn hóa bộ lọc kích thước nhỏ $3 \times 3$ xếp chồng lên nhau, giúp mạng sâu nhưng nhất quán. Số lớp có trọng số: 16. |
+| **ResNet** | 2015 | Giới thiệu **Residual Block** & **Skip Connection**, mở đường cho việc huấn luyện các mạng cực sâu (18, 34, 50, 101, 152+ lớp). |
 
 ---
 
-## 🎯 Lộ Trình Học Tập Đề Xuất
+## 🎯 Lộ Trình Học Tập Đề Xuất Cho Người Mới
 
-1. **Bước 1:** Đọc file `1998_LeNet5.pdf` để hiểu khái niệm tích chập (Convolution), bước nhảy (Stride), đệm (Padding) và gộp (Pooling).
-2. **Bước 2:** Đọc file `2012_AlexNet.pdf` để nắm được lý do tại sao Deep Learning bùng nổ và các kỹ thuật chống quá khớp (Overfitting).
-3. **Bước 3:** Đọc file `2014_VGG16.pdf` để thấy cách thiết kế mạng sâu hơn và ứng dụng cho bài toán Transfer Learning.
-4. **Bước 4:** Đọc file `2015_ResNet.pdf` để hiểu cơ chế học thặng dư (Residual Learning) - tiêu chuẩn nền tảng cho nhiều mạng Deep Learning hiện đại.
+1. **Bước 0:** Đọc file `00_Khon_Niem_CNN.pdf` để hiểu bản chất của CNN và 3 thành phần cốt lõi: Tích chập, ReLU, Pooling.
+2. **Bước 1:** Đọc file `1998_LeNet5.pdf` để thấy cách các khái niệm cơ bản được áp dụng vào kiến trúc cụ thể (bài toán MNIST).
+3. **Bước 2:** Đọc file `2012_AlexNet.pdf` để nắm được lý do tại sao Deep Learning bùng nổ và các kỹ thuật chống quá khớp (Overfitting).
+4. **Bước 3:** Đọc file `2014_VGG16.pdf` để thấy cách thiết kế mạng sâu hơn và ứng dụng cho bài toán Transfer Learning.
+5. **Bước 4:** Đọc file `2015_ResNet.pdf` để hiểu cơ chế học thặng dư (Residual Learning) - tiêu chuẩn nền tảng cho nhiều mạng Deep Learning hiện đại.
 
 ---
 
