@@ -902,18 +902,6 @@ Từ đó tự trả lời: rank nào tạo cân bằng tốt nhất cho bài to
 
 Nếu chỉ nhớ một câu, hãy nhớ câu này:
 
-> **LoRA không bắt mô hình học lại mọi thứ; nó chỉ dạy mô hình cách điều chỉnh kiến thức đã có bằng một bản cập nhật nhỏ.**
+> **LoRA không bắt mô hình học lại mọi thứ, nó chỉ dạy mô hình cách điều chỉnh kiến thức đã có bằng một bản cập nhật nhỏ.**
 
----
-
-## Gợi ý bước học tiếp theo
-
-Sau khi hiểu và tự chạy được mã trong README này, bạn có thể học tiếp theo thứ tự:
-
-1. dùng Hugging Face `transformers` để nạp một mô hình nhỏ;
-2. dùng thư viện `peft` để gắn LoRA;
-3. chuẩn bị dữ liệu dạng instruction–response;
-4. fine-tune và lưu riêng adapter;
-5. nạp lại, đánh giá và thử merge adapter;
-6. tìm hiểu QLoRA khi GPU có bộ nhớ hạn chế.
 
