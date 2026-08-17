@@ -7,12 +7,12 @@
 ## Mục lục
 
 1. [Bài toán mà LoRA giải quyết](#1-bài-toán-mà-lora-giải-quyết)
-2. [Ôn lại lớp tuyến tính `nn.Linear`](#2-ôn-lại-lớp-tuyến-tính-nnlinear)
+2. [Ôn lại lớp tuyến tính nn.Linear](#2-ôn-lại-lớp-tuyến-tính-nnlinear)
 3. [Ý tưởng cốt lõi của LoRA](#3-ý-tưởng-cốt-lõi-của-lora)
 4. [Theo dõi hình dạng tensor](#4-theo-dõi-hình-dạng-tensor)
 5. [Một ví dụ số nhỏ](#5-một-ví-dụ-số-nhỏ)
 6. [LoRA tiết kiệm đến mức nào?](#6-lora-tiết-kiệm-đến-mức-nào)
-7. [Tự xây dựng `LoRALinear` bằng PyTorch](#7-tự-xây-dựng-loralinear-bằng-pytorch)
+7. [Tự xây dựng LoRALinear bằng PyTorch](#7-tự-xây-dựng-loralinear-bằng-pytorch)
 8. [Gắn LoRA vào một mô hình](#8-gắn-lora-vào-một-mô-hình)
 9. [Chương trình hoàn chỉnh có thể chạy](#9-chương-trình-hoàn-chỉnh-có-thể-chạy)
 10. [LoRA nằm ở đâu trong Transformer?](#10-lora-nằm-ở-đâu-trong-transformer)
