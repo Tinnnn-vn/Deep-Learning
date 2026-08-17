@@ -304,18 +304,14 @@ $$
 
 Xác suất của cả câu là tích:
 
-$$\[
-\pi(y\mid x)
-=
-\prod_{t=1}^{T}\pi(y_t\mid x,y_{<t})
-\]$$
+$$
+\pi(y \mid x) = \prod_{t=1}^{T} \pi(y_t \mid x, y_{ < t })
+$$
 
 Ví dụ các xác suất lần lượt là 0.6, 0.5 và 0.4:
 
 $$
-\[
-P(\text{cả câu})=0.6\times0.5\times0.4=0.12
-\]
+P(\text{cả câu}) = 0.6 \times 0.5 \times 0.4 = 0.12
 $$
 
 ### 6.2 Vì sao phải dùng log-probability?
@@ -325,19 +321,13 @@ Một câu dài yêu cầu nhân rất nhiều số nhỏ hơn 1, nên kết qu�
 Logarit có quy tắc:
 
 $$
-\[
-\log(a\times b)=\log a+\log b
-\]
+\log(a \times b) = \log a + \log b
 $$
 
 Nhờ đó:
 
 $$
-\[
-\log\pi(y\mid x)
-=
-\sum_{t=1}^{T}\log\pi(y_t\mid x,y_{<t})
-\]
+\log \pi(y \mid x) = \sum_{t=1}^{T} \log \pi(y_t \mid x, y_{\lt t})
 $$
 
 Ta đổi một chuỗi phép nhân thành một chuỗi phép cộng ổn định hơn.
@@ -367,9 +357,7 @@ Do đó:
 Một ý tưởng ban đầu là đặt:
 
 $$
-\[
-r(x,y)=\log\pi_\theta(y\mid x)
-\]
+r(x, y) = \log \pi_\theta(y \mid x)
 $$
 
 Tức là câu nào model hiện tại cho xác suất cao hơn thì được xem là tốt hơn. Ý tưởng này chưa đủ an toàn.
@@ -441,13 +429,7 @@ So với model ban đầu, policy đã tăng hay giảm mức ưu tiên cho câu
 Với một câu trả lời $$\(y\)$$, đặt:
 
 $$
-\[
-\Delta(y)
-=
-\log\pi_\theta(y\mid x)
--
-\log\pi_{\text{ref}}(y\mid x)
-\]
+\Delta(y) = \log \pi_\theta(y \mid x) - \log \pi_{\text{ref}}(y \mid x)
 $$
 
 Đọc bằng lời:
@@ -473,19 +455,13 @@ Ví dụ:
 Vì:
 
 $$
-\[
-\log a-\log b=\log\frac{a}{b}
-\]
+\log a - \log b = \log \frac{a}{b}
 $$
 
 nên:
 
 $$
-\[
-\Delta(y)
-=
-\log\frac{\pi_\theta(y\mid x)}{\pi_{\text{ref}}(y\mid x)}
-\]
+\Delta(y) = \log \frac{\pi_\theta(y \mid x)}{\pi_{\text{ref}}(y \mid x)}
 $$
 
 Nếu tạm bỏ logarit:
@@ -511,36 +487,22 @@ Tuy nhiên, không nên nói reference model “xóa hoàn toàn” thiên lệc
 ### Bước 1: Policy thay đổi thế nào với `chosen`?
 
 $$
-\[
-\Delta_w
-=
-\log\pi_\theta(y_w\mid x)
--
-\log\pi_{\text{ref}}(y_w\mid x)
-\]
+\Delta_w = \log \pi_\theta(y_w \mid x) - \log \pi_{\text{ref}}(y_w \mid x)
 $$
 
 ### Bước 2: Policy thay đổi thế nào với `rejected`?
 
 $$
-\[
-\Delta_l
-=
-\log\pi_\theta(y_l\mid x)
--
-\log\pi_{\text{ref}}(y_l\mid x)
-\]
+\Delta_l = \log \pi_\theta(y_l \mid x) - \log \pi_{\text{ref}}(y_l \mid x)
 $$
 
 ### Bước 3: So sánh hai thay đổi
 
 $$
-\[
-m=\Delta_w-\Delta_l
-\]
+m = \Delta_w - \Delta_l
 $$
 
-Ta gọi \(m\) là **preference margin**.
+Ta gọi $$\(m\)$$ là **preference margin**.
 
 | Giá trị của $$\(m\)$$ | Ý nghĩa |
 |---:|---|
@@ -553,65 +515,38 @@ Ta gọi \(m\) là **preference margin**.
 Ta nhân margin với $$\(\beta\)$$, rồi dùng sigmoid:
 
 $$
-\[
-p=\sigma(\beta m)
-\]
+p = \sigma(\beta m)
 $$
 
 Cuối cùng:
 
 $$
-\[
-\mathcal{L}_{\text{DPO}}=-\log\sigma(\beta m)
-\]
+\mathcal{L}_{\text{DPO}} = -\log \sigma(\beta m)
 $$
 
 Thay $$\(m=\Delta_w-\Delta_l\)$$:
 
 $$
-\[
-\mathcal{L}_{\text{DPO}}
-=
--\log\sigma\left(\beta(\Delta_w-\Delta_l)\right)
-\]
+\mathcal{L}_{\text{DPO}} = -\log \sigma \left( \beta (\Delta_w - \Delta_l) \right)
 $$
 
 Khai triển đầy đủ:
 
 $$
-\[
 \boxed{
-\mathcal{L}_{\text{DPO}}
-=
--\log\sigma\left(
-\beta\left[
-\left(
-\log\pi_\theta(y_w\mid x)-\log\pi_{\text{ref}}(y_w\mid x)
-\right)
--
-\left(
-\log\pi_\theta(y_l\mid x)-\log\pi_{\text{ref}}(y_l\mid x)
-\right)
-\right]
-\right)
+\mathcal{L}_{\text{DPO}} = -\log \sigma \left( \beta \left[ \left( \log \pi_\theta(y_w \mid x) - \log \pi_{\text{ref}}(y_w \mid x) \right) - \left( \log \pi_\theta(y_l \mid x) - \log \pi_{\text{ref}}(y_l \mid x) \right) \right] \right)
 }
-\]
 $$
 
 Nếu huấn luyện trên cả dataset \(\mathcal D\), ta lấy trung bình trên các mẫu:
 
-\[
-\mathcal{L}_{\text{DPO}}
-=
--\mathbb E_{(x,y_w,y_l)\sim\mathcal D}
-\left[
-\log\sigma\left(\beta(\Delta_w-\Delta_l)\right)
-\right]
-\]
+$$
+\mathcal{L}_{\text{DPO}} = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta (\Delta_w - \Delta_l) \right) \right]
+$$
 
 ### 9.1 \(\beta\) là gì?
 
-\(\beta\) điều chỉnh thang đo của preference margin và xuất hiện từ cách DPO liên hệ bài toán preference với mục tiêu có ràng buộc KL so với reference model.
+$$\(\beta\)$$ điều chỉnh thang đo của preference margin và xuất hiện từ cách DPO liên hệ bài toán preference với mục tiêu có ràng buộc KL so với reference model.
 
 Điều nên nhớ:
 
@@ -638,50 +573,50 @@ Beta:     0.1
 
 Bốn điểm log-probability:
 
-| Câu | Policy \(\pi_\theta\) | Reference \(\pi_{\text{ref}}\) |
+| Câu | Policy $$\(\pi_\theta\)$$ | Reference $$\(\pi_{\text{ref}}\)$$ |
 |---|---:|---:|
 | Chosen | -10 | -12 |
 | Rejected | -15 | -14 |
 
 ### Bước 1: Tính thay đổi của `chosen`
 
-\[
-\Delta_w=-10-(-12)=2
-\]
+$$
+\Delta_w = -10 - (-12) = 2
+$$
 
 Policy đã tăng mức ưu tiên cho `chosen` so với reference.
 
 ### Bước 2: Tính thay đổi của `rejected`
 
-\[
-\Delta_l=-15-(-14)=-1
-\]
+$$
+\Delta_l = -15 - (-14) = -1
+$$
 
 Policy đã giảm mức ưu tiên cho `rejected`.
 
 ### Bước 3: Tính preference margin
 
-\[
-m=\Delta_w-\Delta_l=2-(-1)=3
-\]
+$$
+m = \Delta_w - \Delta_l = 2 - (-1) = 3
+$$
 
 ### Bước 4: Nhân với beta
 
-\[
-z=\beta m=0.1\times3=0.3
-\]
+$$
+z = \beta m = 0.1 \times 3 = 0.3
+$$
 
 ### Bước 5: Đổi thành xác suất
 
-\[
-p=\sigma(0.3)\approx0.574
-\]
+$$
+p = \sigma(0.3) \approx 0.574
+$$
 
 ### Bước 6: Tính loss
 
-\[
-\mathcal L=-\log(0.574)\approx0.555
-\]
+$$
+\mathcal{L} = -\log(0.574) \approx 0.555
+$$
 
 Loss vẫn lớn hơn 0, nên optimizer còn tiếp tục điều chỉnh policy để margin tăng.
 
@@ -689,15 +624,15 @@ Loss vẫn lớn hơn 0, nên optimizer còn tiếp tục điều chỉnh policy
 
 Nếu policy và reference giống hệt nhau:
 
-\[
-\Delta_w=0,\qquad\Delta_l=0
-\]
+$$
+\Delta_w = 0, \qquad \Delta_l = 0
+$$
 
 Do đó:
 
-\[
-m=0,\quad p=0.5,\quad \mathcal L\approx0.693
-\]
+$$
+m = 0, \quad p = 0.5, \quad \mathcal{L} \approx 0.693
+$$
 
 Điều này hợp lý: trước khi học preference, policy chưa nghiêng về phía nào so với chính mốc ban đầu của nó.
 
@@ -709,10 +644,10 @@ m=0,\quad p=0.5,\quad \mathcal L\approx0.693
 
 Ký hiệu:
 
-- \(B\): batch size;
-- \(P\): số token của prompt;
-- \(R\): số token của response;
-- \(V\): kích thước vocabulary.
+- $$\(B\)$$: batch size;
+- $$\(P\)$$: số token của prompt;
+- $$\(R\)$$: số token của response;
+- $$\(V\)$$: kích thước vocabulary.
 
 | Tensor | Shape | Chứa gì? |
 |---|---|---|
@@ -1007,30 +942,30 @@ Cần đánh giá thêm factuality, helpfulness, safety, độ đa dạng và kh
 
 Cho:
 
-\[
-r_w=1.2,\qquad r_l=0.2
-\]
+$$
+r_w = 1.2, \qquad r_l = 0.2
+$$
 
 Hãy tính:
 
-1. \(r_w-r_l\);
-2. \(\sigma(r_w-r_l)\);
-3. \(-\log\sigma(r_w-r_l)\).
+1. $$\(r_w-r_l\)$$;
+2. $$\(\sigma(r_w-r_l)\)$$;
+3. $$\(-\log\sigma(r_w-r_l)\)$$.
 
 <details>
 <summary>Xem đáp án</summary>
 
-\[
-r_w-r_l=1
-\]
+$$
+r_w - r_l = 1
+$$
 
-\[
-\sigma(1)\approx0.731
-\]
+$$
+\sigma(1) \approx 0.731
+$$
 
-\[
--\log(0.731)\approx0.313
-\]
+$$
+-\log(0.731) \approx 0.313
+$$
 
 </details>
 
@@ -1043,22 +978,22 @@ Cho bảng:
 | Chosen | -4.0 | -5.5 |
 | Rejected | -3.0 | -3.2 |
 
-Hãy tính \(\Delta_w\), \(\Delta_l\) và \(m\). Policy đang thay đổi đúng hướng không?
+Hãy tính $$\(\Delta_w\)$$, $$\(\Delta_l\)$$ và $$\(m\)$$. Policy đang thay đổi đúng hướng không?
 
 <details>
 <summary>Xem đáp án</summary>
 
-\[
-\Delta_w=-4-(-5.5)=1.5
-\]
+$$
+\Delta_w = -4 - (-5.5) = 1.5
+$$
 
-\[
-\Delta_l=-3-(-3.2)=0.2
-\]
+$$
+\Delta_l = -3 - (-3.2) = 0.2
+$$
 
-\[
-m=1.5-0.2=1.3>0
-\]
+$$
+m = 1.5 - 0.2 = 1.3 > 0
+$$
 
 Policy đang thay đổi đúng hướng: nó tăng ưu tiên cho cả hai câu, nhưng tăng cho `chosen` nhiều hơn.
 
@@ -1096,9 +1031,9 @@ Nếu policy tăng log-probability của `chosen` thêm 0.5 nhưng tăng log-pro
 
 Margin thay đổi:
 
-\[
-0.5-0.8=-0.3
-\]
+$$
+0.5 - 0.8 = -0.3
+$$
 
 Nó xấu đi. DPO quan tâm đến **sự chênh lệch giữa hai mức thay đổi**, không chỉ việc xác suất `chosen` có tăng hay không.
 
@@ -1127,25 +1062,25 @@ Reference chấm rejected
 
 ### Hai mức thay đổi
 
-\[
-\Delta_w=\log\pi_\theta(y_w\mid x)-\log\pi_{\text{ref}}(y_w\mid x)
-\]
+$$
+\Delta_w = \log \pi_\theta(y_w \mid x) - \log \pi_{\text{ref}}(y_w \mid x)
+$$
 
-\[
-\Delta_l=\log\pi_\theta(y_l\mid x)-\log\pi_{\text{ref}}(y_l\mid x)
-\]
+$$
+\Delta_l = \log \pi_\theta(y_l \mid x) - \log \pi_{\text{ref}}(y_l \mid x)
+$$
 
 ### Một preference margin
 
-\[
-m=\Delta_w-\Delta_l
-\]
+$$
+m = \Delta_w - \Delta_l
+$$
 
 ### Một loss
 
-\[
-\mathcal L_{\text{DPO}}=-\log\sigma(\beta m)
-\]
+$$
+\mathcal{L}_{\text{DPO}} = -\log \sigma(\beta m)
+$$
 
 ### Một câu để nhớ
 
