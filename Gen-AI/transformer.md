@@ -829,3 +829,68 @@ print(loss.shape)    # torch.Size([]) — một số vô hướng
 ```
 
 ---
+
+## 15. Bảng ghi nhớ nhanh
+
+| Thành phần | Câu hỏi mà nó giải quyết |
+|---|---|
+| Tokenizer | Văn bản được đổi thành các ID như thế nào? |
+| Token Embedding | ID này có vector ban đầu nào? |
+| Position Embedding | Token đang đứng ở vị trí nào? |
+| Query–Key | Token nào liên quan đến token hiện tại? |
+| Value | Thông tin nào sẽ được chuyển sang? |
+| Causal Mask | Làm sao ngăn mô hình nhìn đáp án tương lai? |
+| Multi-Head | Làm sao xem nhiều kiểu quan hệ cùng lúc? |
+| MLP | Mỗi token xử lý riêng thông tin ra sao? |
+| Residual | Làm sao giữ thông tin cũ và truyền gradient tốt? |
+| LayerNorm | Làm sao giữ thang giá trị ổn định? |
+| LM Head | Làm sao đổi vector thành điểm cho toàn bộ từ điển? |
+| Cross-Entropy | Dự đoán sai bao nhiêu? |
+| Autoregressive generation | Làm sao sinh tiếp từng token? |
+
+## 16. Tự kiểm tra kiến thức
+
+1. Vì sao không đưa token ID trực tiếp vào `nn.Linear`?
+2. Tại sao phải thêm position embedding?
+3. `QKᵀ` tạo ra tensor kích thước nào và mỗi ô có ý nghĩa gì?
+4. Vì sao causal mask phải được áp dụng trước softmax?
+5. Nếu `n_embd=512` và `n_head=8`, `head_dim` bằng bao nhiêu?
+6. Attention và MLP khác nhau ở điểm cốt lõi nào?
+7. Vì sao đầu vào và đầu ra của một block phải cùng kích thước?
+8. Khi huấn luyện, tại sao mô hình tạo dự đoán ở mọi vị trí?
+9. Khi sinh văn bản, tại sao chỉ dùng `logits[:, -1, :]`?
+10. `temperature` thấp làm kết quả thay đổi thế nào?
+
+<details>
+<summary>Gợi ý trả lời</summary>
+
+1. ID chỉ là nhãn phân loại, khoảng cách giữa các ID không mang ý nghĩa.
+2. Attention tự thân không có đủ tín hiệu về thứ tự token.
+3. `(B, n_head, T, T)` trong multi-head attention; mỗi ô là mức liên quan giữa một cặp vị trí.
+4. Để điểm tương lai thành `-∞`, rồi softmax biến chúng thành xác suất `0`.
+5. `512 / 8 = 64`.
+6. Attention trao đổi thông tin giữa token; MLP xử lý từng token độc lập.
+7. Để cộng residual và xếp chồng nhiều block.
+8. Tận dụng tính toán song song để học `B*T` bài toán dự đoán trong một forward pass.
+9. Chỉ vị trí cuối biểu diễn dự đoán token chưa xuất hiện tiếp theo của toàn bộ prompt hiện tại.
+10. Phân phối tập trung hơn, kết quả ổn định hơn nhưng thường ít đa dạng hơn.
+
+</details>
+
+---
+
+## Kết luận
+
+Một GPT nhỏ có thể được hiểu như chuỗi thao tác sau:
+
+```text
+Token ID
+→ vector về token và vị trí
+→ nhiều vòng trao đổi bằng attention
+→ nhiều vòng xử lý bằng MLP
+→ điểm số cho toàn bộ từ điển
+→ chọn token tiếp theo
+→ lặp lại
+```
+
+Phần khó nhất không nằm ở số lượng dòng mã, mà ở việc theo dõi **ý nghĩa và kích thước tensor**. Khi học luôn tự hỏi “tensor này đang chứa gì?” và “shape hiện tại là gì?”, toàn bộ kiến trúc sẽ trở nên logic hơn rất nhiều.
