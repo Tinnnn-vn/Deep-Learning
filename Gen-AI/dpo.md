@@ -1092,12 +1092,12 @@ $$
 
 Sau khi hiểu tài liệu này, bạn có thể học theo thứ tự:
 
-1. tự tính DPO loss bằng bốn số log-probability;
-2. chạy hàm PyTorch với tensor giả;
-3. học masking và padding cho batch có độ dài khác nhau;
-4. fine-tune một model nhỏ với PEFT/LoRA;
-5. dùng một thư viện DPO trainer;
-6. so sánh chất lượng trước và sau huấn luyện trên tập validation riêng.
+1. Tự tính DPO loss bằng bốn số log-probability;
+2. Chạy hàm PyTorch với tensor giả;
+3. Học masking và padding cho batch có độ dài khác nhau;
+4. Fine-tune một model nhỏ với PEFT/LoRA;
+5. Dùng một thư viện DPO trainer;
+6. So sánh chất lượng trước và sau huấn luyện trên tập validation riêng.
 
 Nếu bạn có thể tự giải thích được ba dòng sau, bạn đã nắm được phần lõi của DPO:
 
