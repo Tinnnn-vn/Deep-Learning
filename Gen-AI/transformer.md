@@ -4,17 +4,17 @@
 
 ## Transformer trong tài liệu này là loại nào?
 
-“Transformer” là tên của một kiến trúc lớn. Tuy nhiên bài viết này tập trung vào **Decoder-only Transformer** — kiểu kiến trúc đứng sau GPT-2 và nhiều mô hình ngôn ngữ sinh văn bản.
+Transformer là tên của một kiến trúc lớn. Tuy nhiên bài viết này tập trung vào **Decoder-only Transformer**, kiểu kiến trúc đứng sau GPT-2 và nhiều mô hình ngôn ngữ sinh văn bản.
 
 Mô hình nhận một chuỗi token và học nhiệm vụ rất đơn giản:
 
-> Dựa vào các token đã xuất hiện, hãy đoán token tiếp theo.
+`Dựa vào các token đã xuất hiện, hãy đoán token tiếp theo.`
 
 Ví dụ:
 
 ```text
 Đầu vào:  Hôm nay trời
-Mục tiêu: đoán token tiếp theo, chẳng hạn "đẹp"
+Mục tiêu: đoán token tiếp theo, chẳng hạn "đẹp" hoặc "xấu"
 ```
 
 Lặp nhiệm vụ này trên lượng văn bản rất lớn giúp mô hình học ngữ pháp, kiến thức, phong cách viết và nhiều quan hệ phức tạp trong ngôn ngữ.
@@ -26,10 +26,10 @@ Lặp nhiệm vụ này trên lượng văn bản rất lớn giúp mô hình h�
 ```mermaid
 flowchart TD
     A[Token IDs] --> B[Token Embedding + Position Embedding]
-    B --> C[Khối Transformer lặp N lần]
-    C --> D[LayerNorm cuối]
+    B --> C[Transformer block repeated N times]
+    C --> D[Final LayerNorm]
     D --> E[Language Model Head]
-    E --> F[Logits cho token kế tiếp]
+    E --> F[Logits for the next token]
 ```
 
 Mỗi khối Transformer gồm hai công việc:
@@ -41,15 +41,15 @@ Hai đường nối tắt `residual` giúp thông tin cũ không bị mất khi 
 
 ```mermaid
 flowchart TD
-    X[Đầu vào x] --> L1[LayerNorm]
+    X[Input x] --> L1[LayerNorm]
     L1 --> A[Causal Self-Attention]
-    A --> R1[Cộng residual]
+    A --> R1[Add residual]
     X --> R1
     R1 --> L2[LayerNorm]
     L2 --> M[MLP]
-    M --> R2[Cộng residual]
+    M --> R2[Add residual]
     R1 --> R2
-    R2 --> Y[Đầu ra cùng kích thước]
+    R2 --> Y[Same-shape output]
 ```
 
 ---
