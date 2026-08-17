@@ -538,13 +538,13 @@ $$
 }
 $$
 
-Nếu huấn luyện trên cả dataset \(\mathcal D\), ta lấy trung bình trên các mẫu:
+Nếu huấn luyện trên cả dataset $$\(\mathcal D\)$$, ta lấy trung bình trên các mẫu:
 
 $$
 \mathcal{L}_{\text{DPO}} = -\mathbb{E}_{(x, y_w, y_l) \sim \mathcal{D}} \left[ \log \sigma \left( \beta (\Delta_w - \Delta_l) \right) \right]
 $$
 
-### 9.1 \(\beta\) là gì?
+### 9.1 $$\(\beta\)$$ là gì?
 
 $$\(\beta\)$$ điều chỉnh thang đo của preference margin và xuất hiện từ cách DPO liên hệ bài toán preference với mục tiêu có ràng buộc KL so với reference model.
 
