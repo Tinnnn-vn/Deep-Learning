@@ -8,7 +8,7 @@ Chào mừng bạn đến với tài liệu hướng dẫn về **CNN và các k
 
 Tài liệu bao gồm các tệp PDF tóm tắt chi tiết khái niệm cơ bản, cấu trúc, thông số và các đóng góp quan trọng của từng mô hình:
 
-* **`00_Khon_Niem_CNN.pdf`**: Giải thích khái niệm CNN là gì, cách nó "bắt chước" hệ thống thị giác con người và 3 thành phần cốt lõi: Lớp Tích chập (Convolutional Layer), Lớp Kích hoạt (ReLU), và Lớp Gộp (Pooling Layer).
+* **`Khai_Niem_CNN.pdf`**: Giải thích khái niệm CNN là gì, cách nó "bắt chước" hệ thống thị giác con người và 3 thành phần cốt lõi: Lớp Tích chập (Convolutional Layer), Lớp Kích hoạt (ReLU), và Lớp Gộp (Pooling Layer).
 * **`1998_LeNet5.pdf`**: Nền móng của mạng tích chập (dành cho bài toán nhận dạng chữ số viết tay MNIST).
 * **`2012_AlexNet.pdf`**: Bước ngoặt lịch sử khởi đầu kỷ nguyên Deep Learning và sự bùng nổ của GPU.
 * **`2014_VGG16.pdf`**: Tối ưu hóa kiến trúc bằng cách dùng bộ lọc nhỏ $3 \times 3$ và tăng độ sâu mạng.
