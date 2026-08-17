@@ -62,3 +62,89 @@ Gradient Descent đơn giản, nhưng nó có ba hạn chế:
 Adam được tạo ra để xử lý những vấn đề này.
 
 ---
+
+## 2. Ý tưởng thứ nhất: nhớ hướng đi bằng Momentum
+
+Hãy tưởng tượng một quả bóng lăn xuống dốc. Nó không quên chuyển động trước đó mà có **quán tính**. Nếu liên tục được đẩy cùng hướng, nó sẽ đi nhanh hơn. Nếu lực đổi hướng liên tục, các lực sẽ phần nào triệt tiêu nhau.
+
+Adam lưu một đại lượng gọi là **moment bậc nhất**:
+
+$$
+m_t=\beta_1m_{t-1}+(1-\beta_1)g_t
+$$
+
+Đọc công thức như sau:
+
+> Hướng hiện tại = một phần hướng đã nhớ + một phần gradient mới.
+
+Các ký hiệu:
+
+- $g_t$: gradient tại bước `t`;
+- $m_t$: hướng trung bình được ghi nhớ đến bước `t`;
+- $\beta_1$: mức độ ghi nhớ, thường là `0.9`.
+
+Nếu $\beta_1=0.9$, Adam giữ `90%` thông tin cũ và nhận `10%` thông tin mới. Nhờ vậy, đường đi bớt rung lắc và ổn định hơn.
+
+> $m$ trả lời câu hỏi: **“Ta thường nên đi theo hướng nào?”**
+
+---
+
+## 3. Ý tưởng thứ hai: đo độ lớn của gradient
+
+Không phải tham số nào cũng có gradient giống nhau:
+
+- gradient lớn: tham số rất nhạy, bước cập nhật cần thận trọng;
+- gradient nhỏ: tham số ít nhạy, có thể cần bước tương đối mạnh hơn.
+
+Adam theo dõi trung bình của **bình phương gradient**:
+
+$$
+v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2
+$$
+
+Vì được bình phương nên mọi giá trị đều không âm. Gradient càng lớn thì $g_t^2$ càng lớn.
+
+- $v_t$: độ lớn gradient được ghi nhớ;
+- $\beta_2$: mức độ ghi nhớ, thường là `0.999`.
+
+Adam dùng $v$ để điều chỉnh bước học riêng cho từng tham số:
+
+- $v$ lớn → mẫu số lớn → bước cập nhật nhỏ;
+- $v$ nhỏ → mẫu số nhỏ → bước cập nhật tương đối lớn.
+
+> $v$ trả lời câu hỏi: **“Ở hướng này, ta nên bước mạnh hay nhẹ?”**
+
+### Vì sao không cộng tất cả gradient bình phương?
+
+AdaGrad, một thuật toán ra đời trước Adam, cộng toàn bộ gradient bình phương từ đầu buổi học. Tổng này chỉ có thể tăng, khiến learning rate ngày càng nhỏ và có thể gần như ngừng học.
+
+Adam dùng **trung bình trượt có trọng số mũ** (*EWMA*). Thông tin cũ giảm ảnh hưởng dần, vì thế thuật toán vẫn thích nghi được khi tình hình thay đổi.
+
+---
+
+## 4. Tại sao cần sửa sai lệch ban đầu?
+
+Lúc bắt đầu, Adam đặt:
+
+```text
+m = 0
+v = 0
+```
+
+Do khởi đầu từ số `0`, các giá trị trung bình trong vài bước đầu bị nhỏ hơn thực tế. Hiện tượng này gọi là **bias về 0**.
+
+Adam sửa lại bằng:
+
+$$
+\hat m_t=\frac{m_t}{1-\beta_1^t}
+$$
+
+$$
+\hat v_t=\frac{v_t}{1-\beta_2^t}
+$$
+
+Ở đây, dấu mũ `^` trên $\hat m$ và $\hat v$ chỉ giá trị **đã được hiệu chỉnh**, không phải phép lũy thừa.
+
+Khi `t` còn nhỏ, phép sửa có tác dụng rõ rệt. Khi `t` lớn, $\beta^t$ tiến gần `0`, mẫu số tiến gần `1` và việc hiệu chỉnh gần như không còn ảnh hưởng.
+
+---
