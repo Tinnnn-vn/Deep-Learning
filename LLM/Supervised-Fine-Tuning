@@ -1,1 +1,5 @@
 ## Supervised Fine-Tuning (SFT): Dạy LLM biết làm theo hướng dẫn
+
+1. SFT giải quyết vấn đề gì?
+
+Một base model vừa hoàn thành pre-training chưa thật sự là trợ lý. Nó giống một học sinh đã đọc rất nhiều sách nhưng chưa được dạy cách trả lời người dùng.
