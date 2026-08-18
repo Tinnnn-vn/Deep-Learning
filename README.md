@@ -1,4 +1,4 @@
-# # Deep Learning Study Notes & Architecture Breakdown 🚀
+# Deep Learning Study Notes & Architecture Breakdown 🚀
 
 Kho lưu trữ cá nhân tổng hợp kiến thức và phân tích chi tiết các kiến trúc mô hình trong **Machine Learning (ML)** và **Deep Learning (DL)**.
 
