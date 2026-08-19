@@ -159,3 +159,40 @@ Ví dụ đã đơn giản hóa:
 Token `<|end|>` trong phần trả lời vẫn được chấm để mô hình học lúc nào cần dừng.
 
 ---
+
+## 5. Nhìn SFT qua tensor
+
+Giả sử một batch có:
+
+- `B = 2`: hai cuộc hội thoại;
+- `T = 8`: mỗi chuỗi dài tám token sau khi padding;
+- `V = 1000`: từ điển có 1.000 token.
+
+Các shape chính là:
+
+| Tensor | Shape | Chứa gì? |
+|---|---|---|
+| `input_ids` | `(B, T)` = `(2, 8)` | ID token đưa vào mô hình |
+| `attention_mask` | `(B, T)` = `(2, 8)` | Phân biệt token thật và padding |
+| `logits` | `(B, T, V)` = `(2, 8, 1000)` | Điểm dự đoán cho mọi token |
+| `labels` | `(B, T)` = `(2, 8)` | Token đúng hoặc `-100` |
+
+Để tính Cross-Entropy, hai chiều `B` và `T` thường được gộp:
+
+```text
+logits: (B, T, V) → (B × T, V)
+labels: (B, T)    → (B × T)
+```
+
+Với ví dụ trên:
+
+```text
+(2, 8, 1000) → (16, 1000)
+(2, 8)       → (16)
+```
+
+Mỗi trong 16 vị trí trở thành một bài toán phân loại: “Trong 1.000 token, token đúng là token nào?”. Các vị trí có label `-100` sẽ bị bỏ qua.
+
+> Các lớp `AutoModelForCausalLM` phổ biến thường tự dịch `logits` và `labels` một bước bên trong để dự đoán token kế tiếp. Vì vậy, khi truyền `labels=input_ids`, bạn không nên tự dịch lần nữa nếu tài liệu của model không yêu cầu.
+
+---
