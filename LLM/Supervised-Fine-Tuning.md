@@ -50,3 +50,33 @@ flowchart TD
 ```
 
 ---
+
+## 2. SFT hoạt động như thế nào?
+
+LLM không nhận riêng một ô “câu hỏi” và một ô “câu trả lời”. Nó nhận một chuỗi token liên tục. Vì vậy, ta ghép hai phần bằng **chat template**:
+
+```text
+<|user|> Thủ đô của Việt Nam là gì? <|end|>
+<|assistant|> Thủ đô của Việt Nam là Hà Nội. <|end|>
+```
+
+Các token đặc biệt có vai trò như biển báo:
+
+| Token | Ý nghĩa |
+|---|---|
+| `<|user|>` | Người dùng bắt đầu nói |
+| `<|assistant|>` | Đến lượt trợ lý trả lời |
+| `<|end|>` | Kết thúc một lượt nói |
+
+Quy trình tổng quát:
+
+1. Chuẩn bị nhiều cặp `prompt` và `response` chất lượng cao.
+2. Ghép chúng theo chat template của mô hình.
+3. Tokenizer đổi văn bản thành các số nguyên gọi là `input_ids`.
+4. Mô hình dự đoán token tiếp theo ở từng vị trí.
+5. Chỉ tính lỗi trên phần trả lời của trợ lý.
+6. Backpropagation cập nhật trọng số để lần sau mô hình trả lời gần mẫu hơn.
+
+Điểm số 5 là phần quan trọng nhất của SFT.
+
+---
