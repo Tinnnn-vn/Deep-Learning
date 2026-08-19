@@ -80,3 +80,82 @@ Quy trình tổng quát:
 Điểm số 5 là phần quan trọng nhất của SFT.
 
 ---
+
+## 3. Cross-Entropy Loss là gì?
+
+Mỗi lần đoán token tiếp theo, mô hình tạo một điểm số cho mọi token trong từ điển. `softmax` biến các điểm số này thành xác suất.
+
+Giả sử đáp án đúng là token `Hà_Nội`:
+
+| Mô hình dự đoán | Xác suất của `Hà_Nội` | Kết quả |
+|---|---:|---|
+| Rất tự tin và đúng | 0.90 | Loss nhỏ |
+| Không chắc chắn | 0.40 | Loss vừa |
+| Gần như chọn sai | 0.01 | Loss rất lớn |
+
+Loss của token đúng được tính bằng:
+
+$$
+L = -\log(p)
+$$
+
+Trong đó $p$ là xác suất mô hình dành cho token đúng.
+
+Ví dụ:
+
+| $p$ | $-\log(p)$ | Diễn giải |
+|---:|---:|---|
+| 0.90 | 0.105 | Đoán tốt |
+| 0.50 | 0.693 | Chưa chắc |
+| 0.01 | 4.605 | Đoán rất tệ |
+
+Hãy xem loss như **điểm phạt vì bất ngờ**: mô hình càng bất ngờ trước đáp án đúng thì bị phạt càng nhiều.
+
+Với cả câu trả lời, ta lấy trung bình loss của các token cần học:
+
+$$
+\mathcal{L}_{\text{SFT}}
+= -\frac{1}{|y|}\sum_{t=1}^{|y|}
+\log P_\theta(y_t\mid x,y_{<t})
+$$
+
+Đọc công thức bằng lời:
+
+- $x$: yêu cầu của người dùng;
+- $y_t$: token đúng thứ $t$ trong câu trả lời;
+- $y_{<t}$: những token trả lời đứng trước nó;
+- $P_\theta$: xác suất do mô hình hiện tại dự đoán;
+- tổng chỉ chạy trên **các token thuộc câu trả lời**.
+
+---
+
+## 4. Bí quyết quan trọng: Loss Masking
+
+Nếu tính loss trên toàn bộ cuộc hội thoại, mô hình còn bị yêu cầu học cách tạo ra câu hỏi của người dùng. Đó không phải mục tiêu chính của trợ lý.
+
+Ta giải quyết bằng hai tensor:
+
+- `input_ids`: chứa toàn bộ cuộc hội thoại để mô hình có đủ ngữ cảnh.
+- `labels`: cho biết những token nào được dùng để chấm điểm.
+
+Ở các vị trí không muốn chấm, ta đặt label bằng `-100`. Theo mặc định, `CrossEntropyLoss` của PyTorch bỏ qua nhãn này.
+
+Ví dụ đã đơn giản hóa:
+
+| Token | `input_ids` | `labels` | Tính loss? |
+|---|---:|---:|:---:|
+| `<|user|>` | 10 | -100 | Không |
+| `2` | 21 | -100 | Không |
+| `+` | 22 | -100 | Không |
+| `3` | 23 | -100 | Không |
+| `<|assistant|>` | 11 | -100 | Không |
+| `5` | 25 | 25 | Có |
+| `<|end|>` | 12 | 12 | Có |
+
+Điều đáng nhớ:
+
+> `-100` không xóa prompt khỏi đầu vào. Mô hình vẫn đọc prompt, nhưng không bị chấm điểm vì đã dự đoán các token thuộc prompt.
+
+Token `<|end|>` trong phần trả lời vẫn được chấm để mô hình học lúc nào cần dừng.
+
+---
