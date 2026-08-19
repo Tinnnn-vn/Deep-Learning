@@ -859,7 +859,7 @@ print(loss.shape)    # torch.Size([]) — một số vô hướng
 7. Vì sao đầu vào và đầu ra của một block phải cùng kích thước?
 8. Khi huấn luyện, tại sao mô hình tạo dự đoán ở mọi vị trí?
 9. Khi sinh văn bản, tại sao chỉ dùng `logits[:, -1, :]`?
-10. `temperature` thấp làm kết quả thay đổi thế nào?
+10. c thấp làm kết quả thay đổi thế nào?
 
 <details>
 <summary>Gợi ý trả lời</summary>
@@ -873,7 +873,7 @@ print(loss.shape)    # torch.Size([]) — một số vô hướng
 7. Để cộng residual và xếp chồng nhiều block.
 8. Tận dụng tính toán song song để học `B*T` bài toán dự đoán trong một forward pass.
 9. Chỉ vị trí cuối biểu diễn dự đoán token chưa xuất hiện tiếp theo của toàn bộ prompt hiện tại.
-10. Phân phối tập trung hơn, kết quả ổn định hơn nhưng thường ít đa dạng hơn.
+10. Phân phối tập trung hơn, kết quả ổn định hơn nhưng thường ít đa dạng hơn. (Khi build các ứng dụng chatbot AI nếu đặt `temperature` thấp thì AI sẽ trả lời chính xác và logic hơn nhưng ít sáng tạo hơn).
 
 </details>
 
