@@ -196,3 +196,131 @@ Mỗi trong 16 vị trí trở thành một bài toán phân loại: “Trong 1.
 > Các lớp `AutoModelForCausalLM` phổ biến thường tự dịch `logits` và `labels` một bước bên trong để dự đoán token kế tiếp. Vì vậy, khi truyền `labels=input_ids`, bạn không nên tự dịch lần nữa nếu tài liệu của model không yêu cầu.
 
 ---
+
+## 6. Cài đặt bằng PyTorch
+
+Hàm dưới đây thể hiện phần cốt lõi cho **một cặp** `prompt`–`response`:
+
+```python
+import torch
+
+
+def prepare_sft_example(prompt: str, response: str, tokenizer):
+    """Biến một cặp hỏi–đáp thành input_ids và labels dùng cho SFT."""
+
+    prompt_text = (
+        f"<|user|> {prompt} <|end|> "
+        f"<|assistant|> "
+    )
+    full_text = f"{prompt_text}{response} <|end|>"
+
+    # Không tự thêm BOS/EOS để tránh lệch ranh giới giữa hai lần tokenize.
+    prompt_ids = tokenizer.encode(prompt_text, add_special_tokens=False)
+    input_ids = tokenizer.encode(full_text, add_special_tokens=False)
+
+    input_ids = torch.tensor(input_ids, dtype=torch.long)
+    labels = input_ids.clone()
+
+    # Không tính loss cho prompt và token đánh dấu vai trò assistant.
+    labels[:len(prompt_ids)] = -100
+
+    return {
+        "input_ids": input_ids,
+        "labels": labels,
+    }
+```
+
+### Giải thích từng bước
+
+1. `prompt_text` tạo phần ngữ cảnh kết thúc ở `<|assistant|>`.
+2. `full_text` nối thêm câu trả lời mẫu.
+3. Tokenize `prompt_text` để biết phải mask bao nhiêu token.
+4. Tokenize toàn bộ hội thoại thành `input_ids`.
+5. `clone()` tạo `labels` độc lập với `input_ids`.
+6. Đổi các nhãn trước câu trả lời thành `-100`.
+
+### Khi tạo batch có độ dài khác nhau
+
+Các tensor trong cùng batch phải có cùng chiều dài. Vì thế, chuỗi ngắn cần được thêm `<pad>` ở cuối. Cả prompt lẫn padding đều phải mang label `-100`.
+
+```python
+from torch.nn.utils.rnn import pad_sequence
+
+
+def collate_sft_batch(examples, tokenizer):
+    prepared = [
+        prepare_sft_example(
+            item["prompt"],
+            item["response"],
+            tokenizer,
+        )
+        for item in examples
+    ]
+
+    input_ids = pad_sequence(
+        [item["input_ids"] for item in prepared],
+        batch_first=True,
+        padding_value=tokenizer.pad_token_id,
+    )
+
+    labels = pad_sequence(
+        [item["labels"] for item in prepared],
+        batch_first=True,
+        padding_value=-100,
+    )
+
+    attention_mask = input_ids.ne(tokenizer.pad_token_id).long()
+
+    return {
+        "input_ids": input_ids,
+        "attention_mask": attention_mask,
+        "labels": labels,
+    }
+```
+
+Trong dự án thực tế, nên ưu tiên chat template chính thức của từng model, chẳng hạn `tokenizer.apply_chat_template(...)`. Mỗi họ model có thể dùng token và định dạng hội thoại khác nhau.
+
+---
+
+## 7. Một bước huấn luyện
+
+Sau khi dữ liệu đã đúng, vòng huấn luyện khá ngắn:
+
+```python
+def train_step(model, optimizer, batch):
+    model.train()
+    optimizer.zero_grad()
+
+    outputs = model(
+        input_ids=batch["input_ids"],
+        attention_mask=batch["attention_mask"],
+        labels=batch["labels"],
+    )
+
+    loss = outputs.loss
+    loss.backward()
+    optimizer.step()
+
+    return loss.item()
+```
+
+Luồng hoạt động:
+
+```mermaid
+flowchart TD
+    A["Prompt + câu trả lời mẫu"] --> B["Chat template"]
+    B --> C["Tokenize và padding"]
+    C --> D["Mask prompt bằng -100"]
+    D --> E["Model tạo logits"]
+    E --> F["Cross-Entropy trên câu trả lời"]
+    F --> G["Backpropagation cập nhật trọng số"]
+```
+
+### Bốn lỗi người mới thường gặp
+
+1. **Quên mask padding:** model bị chấm điểm trên các ô thêm vào cho đủ chiều dài.
+2. **Dùng sai chat template:** model học một định dạng khác với lúc chạy thật.
+3. **Mask sai ranh giới:** token đầu tiên của câu trả lời vô tình bị bỏ qua.
+4. **Dữ liệu kém chất lượng:** SFT bắt chước cả lỗi sai, giọng văn dở và thông tin không an toàn trong đáp án mẫu.
+
+---
