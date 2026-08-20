@@ -1,5 +1,19 @@
 # Supervised Fine-Tuning (SFT): Dạy LLM biết làm theo hướng dẫn
 
+## Mục lục
+
+- [1. SFT giải quyết vấn đề gì?](#1-sft-giải-quyết-vấn-đề-gì)
+- [2. SFT hoạt động như thế nào?](#2-sft-hoạt-động-như-thế-nào)
+- [3. Cross-Entropy Loss là gì?](#3-cross-entropy-loss-là-gì)
+- [4. Bí quyết quan trọng: Loss Masking](#4-bí-quyết-quan-trọng-loss-masking)
+- [5. Nhìn SFT qua tensor](#5-nhìn-sft-qua-tensor)
+- [6. Cài đặt bằng PyTorch](#6-cài-đặt-bằng-pytorch)
+- [7. Một bước huấn luyện](#7-một-bước-huấn-luyện)
+- [8. SFT làm được và chưa làm được gì?](#8-sft-làm-được-và-chưa-làm-được-gì)
+- [9. Tóm tắt](#9-tóm-tắt)
+
+---
+
 ## 1. SFT giải quyết vấn đề gì?
 
 Một base model vừa hoàn thành pre-training chưa thật sự là trợ lý. Nó giống một học sinh đã đọc rất nhiều sách nhưng chưa được dạy cách trả lời người dùng.
