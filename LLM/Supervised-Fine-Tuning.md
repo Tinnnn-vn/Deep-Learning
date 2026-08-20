@@ -366,7 +366,7 @@ SFT rất quan trọng, nhưng không tự bảo đảm mô hình luôn đúng, 
 
 ## 9. Tóm tắt
 
-Chỉ cần nhớ năm ý sau:
+Chỉ cần nhớ 5 ý sau:
 
 1. Base model ban đầu chủ yếu học cách dự đoán token tiếp theo.
 2. SFT sử dụng các cặp yêu cầu–câu trả lời tốt để dạy hành vi trợ lý.
