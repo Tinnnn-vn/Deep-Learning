@@ -324,3 +324,54 @@ flowchart TD
 4. **Dữ liệu kém chất lượng:** SFT bắt chước cả lỗi sai, giọng văn dở và thông tin không an toàn trong đáp án mẫu.
 
 ---
+
+## 8. SFT làm được và chưa làm được gì?
+
+### SFT giúp mô hình
+
+- nhận biết vai trò người dùng và trợ lý;
+- trả lời theo đúng định dạng;
+- bắt chước phong cách của dữ liệu mẫu;
+- làm theo những loại yêu cầu đã được học;
+- trở thành điểm khởi đầu tốt cho các giai đoạn căn chỉnh tiếp theo.
+
+### Giới hạn của SFT
+
+SFT cho mô hình xem một câu trả lời mẫu và yêu cầu bắt chước. Nó không trực tiếp dạy rằng đáp án B **tốt hơn** đáp án A.
+
+Ví dụ, cả hai câu sau đều đúng:
+
+- A: “Máy in giúp sản xuất sách nhanh hơn.”
+- B: “Máy in làm sách rẻ và phổ biến hơn, nhờ đó kiến thức lan rộng và tỷ lệ biết chữ tăng.”
+
+Con người dễ nhận ra B đầy đủ hơn. Nhưng dữ liệu SFT thông thường không chứa nhãn so sánh này.
+
+Muốn dạy sở thích tương đối, ta cần dữ liệu dạng:
+
+```text
+(prompt, câu trả lời được chọn, câu trả lời bị loại)
+```
+
+Đó là mục tiêu của các phương pháp như **DPO** hoặc **RLHF**.
+
+| Giai đoạn | Câu hỏi mà mô hình học trả lời |
+|---|---|
+| Pre-training | “Token nào có khả năng xuất hiện tiếp theo?” |
+| SFT | “Một trợ lý mẫu sẽ trả lời yêu cầu này ra sao?” |
+| DPO/RLHF | “Trong nhiều câu trả lời, con người thích câu nào hơn?” |
+
+SFT rất quan trọng, nhưng không tự bảo đảm mô hình luôn đúng, an toàn hay hiểu mọi yêu cầu ngoài dữ liệu huấn luyện.
+
+---
+
+## 9. Tóm tắt
+
+Chỉ cần nhớ năm ý sau:
+
+1. Base model ban đầu chủ yếu học cách dự đoán token tiếp theo.
+2. SFT sử dụng các cặp yêu cầu–câu trả lời tốt để dạy hành vi trợ lý.
+3. Chat template cho mô hình biết ai đang nói.
+4. `input_ids` chứa toàn bộ hội thoại, còn `labels=-100` giúp bỏ qua prompt và padding khi tính loss.
+5. SFT dạy cách bắt chước câu trả lời tốt; DPO/RLHF mới tập trung vào việc so sánh và ưu tiên câu trả lời tốt hơn.
+
+> Công thức dễ nhớ: **SFT = ví dụ tốt + đúng chat template + loss masking đúng vị trí.**
