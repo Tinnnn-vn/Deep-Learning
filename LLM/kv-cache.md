@@ -82,6 +82,39 @@ KV Cache giải quyết đúng lãng phí này bằng một nguyên lý đơn gi
 
 - Sau đó, nó lấy các K và V cũ đã lưu trong KV Cache ra kết hợp với K và V mới để dự đoán từ tiếp theo.
 
+Tóm lại:
+
+1. Chỉ tính Q, K và V cho token mới.
+2. Ghép K mới vào K cũ.
+3. Ghép V mới vào V cũ.
+4. Dùng Q mới để “nhìn” toàn bộ K/V trong cache.
+5. Trả cache đã cập nhật cho bước sau.
+
+Công thức ngắn gọn:
+
+$$
+K_{\text{all}} = \operatorname{concat}(K_{\text{past}}, K_{\text{new}})
+$$
+
+$$
+V_{\text{all}} = \operatorname{concat}(V_{\text{past}}, V_{\text{new}})
+$$
+
+$$
+Y_{\text{new}} = \operatorname{softmax}\left(
+\frac{Q_{\text{new}}K_{\text{all}}^T}{\sqrt{d_h}}
+\right)V_{\text{all}}
+$$
+
+Trực giác dễ hình dung:
+
+- **K** giống như nhãn ở gáy sách: giúp xác định thông tin nào có liên quan.
+- **V** giống như nội dung hữu ích trong cuốn sách đó.
+- **Q** là câu hỏi hiện tại.
+- **KV Cache** là giá sách đã được sắp sẵn; không cần đem sách cũ đi phân loại lại mỗi lần có câu hỏi mới.
+
+> KV Cache không phải “ký ức lâu dài” của chatbot. Nó chỉ tồn tại trong lúc mô hình đang xử lý một chuỗi hoặc một phiên sinh cụ thể. Khi cache bị xóa, mô hình không còn giữ các K/V đó.
+
 | Tiêu chí | Không dùng KV Cache | Có dùng KV Cache |
 | :--- | :--- | :--- |
 | **Khối lượng tính toán** | Tăng theo cấp số nhân khi câu dài ra. | Giữ nguyên cho mỗi từ mới (chỉ tính 1 token). |
