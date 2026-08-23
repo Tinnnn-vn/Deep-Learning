@@ -23,6 +23,14 @@
 
 ## 1. DPO đang giải quyết vấn đề gì?
 
+DPO ra đời như một bước tiến mới nhằm đơn giản hóa toàn bộ quy trình phức tạp của RLHF.
+
+**Vấn đề của RLHF/PPO:** Phải huấn luyện nhiều mô hình cùng lúc (LLM chính, Reward Model, Value Model), tốn rất nhiều tài nguyên tính toán và cực kỳ khó ổn định.
+
+**Giải pháp của DPO:** Các nhà nghiên cứu chứng minh được rằng có thể biến đổi công thức toán học của RLHF để huấn luyện trực tiếp LLM trên dữ liệu so sánh sở thích (Câu hỏi, Đáp án được chọn, Đáp án bị loại) mà không cần Reward Model và không cần PPO.
+
+**Ưu điểm:** Nhanh hơn, tốn ít RAM/VRAM hơn và dễ cài đặt hơn RLHF rất nhiều nhưng mang lại hiệu quả tương đương.
+
 Một mô hình ngôn ngữ sau khi pre-training rất giỏi đoán token tiếp theo, nhưng chưa chắc đã là một trợ lý tốt.
 
 Ví dụ, ta nhập:
