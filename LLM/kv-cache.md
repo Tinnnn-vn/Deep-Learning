@@ -120,3 +120,50 @@ Trực giác dễ hình dung:
 | **Khối lượng tính toán** | Tăng theo cấp số nhân khi câu dài ra. | Giữ nguyên cho mỗi từ mới (chỉ tính 1 token). |
 | **Tốc độ sinh chữ** | Càng về sau càng chậm. | Tốc độ ổn định, nhanh hơn gấp nhiều lần. |
 | **Đổi lại (Trade-off)** | Tiết kiệm RAM/VRAM. | Tốn dung lượng VRAM để lưu bộ nhớ đệm KV. |
+
+## 3. Hai giai đoạn: Prefill và Decode
+
+Đây là cách nhìn rất quan trọng trong hệ thống LLM thực tế.
+
+### 3.1. Prefill: đọc prompt lần đầu
+
+Giả sử người dùng nhập:
+
+```text
+A cat
+```
+
+Mô hình phải xử lý cả prompt để:
+
+- tạo logits dự đoán token tiếp theo;
+- tạo K và V của `A`, `cat` ở từng tầng;
+- lưu chúng vào cache.
+
+Giai đoạn này gọi là **prefill**.
+
+### 3.2. Decode: sinh từng token mới
+
+Sau prefill, mô hình dự đoán `sat`. Ở vòng tiếp theo, nó chỉ cần nhận token `sat`, đồng thời dùng lại cache của `A cat`.
+
+```mermaid
+flowchart TD
+    A["Prompt: A cat"] --> B["Prefill: xử lý toàn bộ prompt"]
+    B --> C["Cache: K/V của A cat"]
+    B --> D["Dự đoán: sat"]
+    D --> E["Decode: chỉ xử lý sat"]
+    C --> E
+    E --> F["Cache mới: K/V của A cat sat"]
+    E --> G["Dự đoán: on"]
+```
+
+Trình tự đúng là:
+
+```text
+Xử lý "A cat"       → dự đoán "sat"
+Xử lý riêng "sat"   → dự đoán "on"
+Xử lý riêng "on"    → dự đoán "the"
+```
+
+Không phải đưa `sat` vào để dự đoán chính `sat`. Token đầu vào ở một bước được dùng để dự đoán token đứng **sau** nó.
+
+---
