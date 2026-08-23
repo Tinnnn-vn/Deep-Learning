@@ -1,5 +1,7 @@
 # Direct Preference Optimization (DPO) — Dạy mô hình nhận biết câu trả lời nào tốt hơn
 
+> DPO ra đời như một bước tiến mới nhằm đơn giản hóa toàn bộ quy trình phức tạp của RLHF.
+
 ## Mục lục
 
 1. [DPO đang giải quyết vấn đề gì?](#1-dpo-đang-giải-quyết-vấn-đề-gì)
@@ -22,8 +24,6 @@
 ---
 
 ## 1. DPO đang giải quyết vấn đề gì?
-
-DPO ra đời như một bước tiến mới nhằm đơn giản hóa toàn bộ quy trình phức tạp của RLHF.
 
 **Vấn đề của RLHF/PPO:** Phải huấn luyện nhiều mô hình cùng lúc (LLM chính, Reward Model, Value Model), tốn rất nhiều tài nguyên tính toán và cực kỳ khó ổn định.
 
