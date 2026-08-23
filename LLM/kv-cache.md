@@ -93,17 +93,15 @@ Tóm lại:
 Công thức ngắn gọn:
 
 $$
-K_{\text{all}} = \operatorname{concat}(K_{\text{past}}, K_{\text{new}})
+K_{\text{all}} = \text{concat}(K_{\text{past}}, K_{\text{new}})
 $$
 
 $$
-V_{\text{all}} = \operatorname{concat}(V_{\text{past}}, V_{\text{new}})
+V_{\text{all}} = \text{concat}(V_{\text{past}}, V_{\text{new}})
 $$
 
 $$
-Y_{\text{new}} = \operatorname{softmax}\left(
-\frac{Q_{\text{new}}K_{\text{all}}^T}{\sqrt{d_h}}
-\right)V_{\text{all}}
+Y_{\text{new}} = \text{softmax}\left( \frac{Q_{\text{new}} K_{\text{all}}^T}{\sqrt{d_h}} \right) V_{\text{all}}
 $$
 
 Trực giác dễ hình dung:
@@ -114,6 +112,8 @@ Trực giác dễ hình dung:
 - **KV Cache** là giá sách đã được sắp sẵn; không cần đem sách cũ đi phân loại lại mỗi lần có câu hỏi mới.
 
 > KV Cache không phải “ký ức lâu dài” của chatbot. Nó chỉ tồn tại trong lúc mô hình đang xử lý một chuỗi hoặc một phiên sinh cụ thể. Khi cache bị xóa, mô hình không còn giữ các K/V đó.
+
+**Bảng so sánh:**
 
 | Tiêu chí | Không dùng KV Cache | Có dùng KV Cache |
 | :--- | :--- | :--- |
