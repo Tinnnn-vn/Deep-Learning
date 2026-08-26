@@ -210,3 +210,150 @@ Trong lúc decode, ta chỉ cần kết quả attention cho token mới nhất:
 Vì vậy, mô hình lưu **K và V**, không cần giữ toàn bộ Q cũ.
 
 ---
+
+## 5. Theo dõi hình dạng tensor
+
+Trước khi đọc mã, hãy thống nhất ký hiệu:
+
+| Ký hiệu   | Ý nghĩa                             |
+| --------- | ----------------------------------- |
+| `B`       | Batch size — số câu xử lý cùng lúc  |
+| `T_new`   | Số token mới trong lần gọi hiện tại |
+| `T_past`  | Số token đã nằm trong cache         |
+| `T_total` | `T_past + T_new`                    |
+| `C`       | Kích thước embedding (`n_embd`)     |
+| `H`       | Số attention head (`n_head`)        |
+| `D`       | Kích thước mỗi head, `D = C // H`   |
+
+Trong decode thông thường, `T_new = 1`.
+
+Giả sử:
+
+```text
+B = 1
+T_past = 2
+T_new = 1
+C = 8
+H = 2
+D = C / H = 4
+```
+
+Hình dạng các tensor:
+
+| Tensor                  |          Shape | Chứa thông tin của       |
+| ----------------------- | -------------: | ------------------------ |
+| `x`                     |    `(1, 1, 8)` | token mới                |
+| `q_new`                 | `(1, 2, 1, 4)` | token mới                |
+| `k_new`, `v_new`        | `(1, 2, 1, 4)` | token mới                |
+| `past_k`, `past_v`      | `(1, 2, 2, 4)` | 2 token cũ               |
+| `k_all`, `v_all`        | `(1, 2, 3, 4)` | 2 token cũ + 1 token mới |
+| `scores`                | `(1, 2, 1, 3)` | 1 query so với 3 key     |
+| `y` trước khi ghép head | `(1, 2, 1, 4)` | kết quả của 2 head       |
+| `y` sau khi ghép head   |    `(1, 1, 8)` | kết quả cuối             |
+
+Phép nhân quan trọng nhất:
+
+```text
+q_new                         @ k_all.transpose(-2, -1)
+(B, H, T_new, D)              @ (B, H, D, T_total)
+
+→ scores: (B, H, T_new, T_total)
+```
+
+Sau đó:
+
+```text
+scores                        @ v_all
+(B, H, T_new, T_total)        @ (B, H, T_total, D)
+
+→ y: (B, H, T_new, D)
+```
+
+### Vì sao `torch.cat(..., dim=-2)`?
+
+Tensor K/V có thứ tự chiều:
+
+```text
+(B, H, T, D)
+```
+
+Chiều `-1` là `D`, còn chiều `-2` là `T`. Ta muốn nối thêm **token**, nên phải nối ở `dim=-2`.
+
+```python
+k_all = torch.cat([past_k, k_new], dim=-2)
+```
+
+Nếu nối nhầm ở `dim=-1`, bạn sẽ làm tăng kích thước vector của head thay vì tăng độ dài câu.
+
+---
+
+## 6. Ví dụ từng bước với câu “A cat sat”
+
+Ta bắt đầu với prompt `A cat`.
+
+### Bước 1 — Prefill
+
+```text
+Đầu vào: [A, cat]
+Cache cũ: chưa có
+```
+
+Mô hình tính:
+
+```text
+Q = [q_A, q_cat]
+K = [k_A, k_cat]
+V = [v_A, v_cat]
+```
+
+Sau attention, logits tại vị trí `cat` dự đoán token tiếp theo là `sat`.
+
+Cache được giữ lại:
+
+```text
+K_cache = [k_A, k_cat]
+V_cache = [v_A, v_cat]
+```
+
+### Bước 2 — Decode token `sat`
+
+```text
+Đầu vào mới: [sat]
+Cache cũ: K/V của [A, cat]
+```
+
+Chỉ token `sat` được chiếu qua $W_Q$, $W_K$, $W_V$:
+
+```text
+q_new = [q_sat]
+k_new = [k_sat]
+v_new = [v_sat]
+```
+
+Ghép cache:
+
+```text
+K_all = [k_A, k_cat, k_sat]
+V_all = [v_A, v_cat, v_sat]
+```
+
+Attention lúc này là:
+
+```text
+q_sat so sánh với [k_A, k_cat, k_sat]
+```
+
+Mô hình dùng kết quả để dự đoán `on`, rồi cập nhật cache thành K/V của `A cat sat`.
+
+### So sánh lượng K/V phải tính mới
+
+| Bước           | Không có cache          | Có cache   |
+| -------------- | ----------------------- | ---------- |
+| Prompt `A cat` | `A`, `cat`              | `A`, `cat` |
+| Nhận `sat`     | `A`, `cat`, `sat`       | chỉ `sat`  |
+| Nhận `on`      | `A`, `cat`, `sat`, `on` | chỉ `on`   |
+| Nhận `the`     | tính lại cả chuỗi       | chỉ `the`  |
+
+Cache không thay đổi kết quả toán học; nó chỉ tránh thực hiện lại phần đã có.
+
+---
