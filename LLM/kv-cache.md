@@ -354,6 +354,142 @@ Mô hình dùng kết quả để dự đoán `on`, rồi cập nhật cache th�
 | Nhận `on`      | `A`, `cat`, `sat`, `on` | chỉ `on`   |
 | Nhận `the`     | tính lại cả chuỗi       | chỉ `the`  |
 
-Cache không thay đổi kết quả toán học; nó chỉ tránh thực hiện lại phần đã có.
+Cache không thay đổi kết quả toán học, nó chỉ tránh thực hiện lại phần đã có.
+
+---
+
+## 7. Cài đặt KV Cache bằng PyTorch
+
+Đoạn mã dưới đây tập trung vào một lớp Causal Self-Attention. Nó hỗ trợ cả:
+
+- prefill với nhiều token;
+- decode với một hoặc vài token mới;
+- causal mask có tính đến độ dài cache.
+
+```python
+import math
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class CausalSelfAttention(nn.Module):
+    def __init__(self, n_embd: int, n_head: int, dropout: float = 0.0):
+        super().__init__()
+
+        assert n_embd % n_head == 0
+
+        self.n_embd = n_embd
+        self.n_head = n_head
+        self.head_dim = n_embd // n_head
+
+        # Một phép chiếu tạo đồng thời Q, K và V.
+        self.c_attn = nn.Linear(n_embd, 3 * n_embd)
+        self.c_proj = nn.Linear(n_embd, n_embd)
+        self.resid_dropout = nn.Dropout(dropout)
+
+    def forward(self, x, past_kv=None, use_cache=False):
+        """
+        x:       (B, T_new, C)
+        past_kv: None hoặc tuple (past_k, past_v)
+                 mỗi tensor có shape (B, H, T_past, D)
+        """
+
+        B, T_new, C = x.shape
+
+        # (B, T_new, C) -> (B, T_new, 3C)
+        qkv = self.c_attn(x)
+
+        # Mỗi tensor có shape (B, T_new, C)
+        q, k, v = qkv.split(self.n_embd, dim=-1)
+
+        # Tách C thành H head, mỗi head có D chiều.
+        # (B, T_new, C) -> (B, H, T_new, D)
+        q = q.view(B, T_new, self.n_head, self.head_dim).transpose(1, 2)
+        k = k.view(B, T_new, self.n_head, self.head_dim).transpose(1, 2)
+        v = v.view(B, T_new, self.n_head, self.head_dim).transpose(1, 2)
+
+        T_past = 0
+
+        if past_kv is not None:
+            past_k, past_v = past_kv
+            T_past = past_k.size(-2)
+
+            # Nối theo chiều token T, tức dim=-2.
+            k = torch.cat([past_k, k], dim=-2)
+            v = torch.cat([past_v, v], dim=-2)
+
+        # k, v lúc này chứa cả quá khứ và phần mới.
+        present_kv = (k, v) if use_cache else None
+        T_total = k.size(-2)
+
+        # (B, H, T_new, D) @ (B, H, D, T_total)
+        # -> (B, H, T_new, T_total)
+        scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+
+        # Vị trí thật của query mới bắt đầu từ T_past.
+        # Ví dụ T_past=2, T_new=1 -> query_positions = [[2]]
+        query_positions = torch.arange(
+            T_past,
+            T_past + T_new,
+            device=x.device,
+        ).view(T_new, 1)
+
+        # Key gồm các vị trí 0 ... T_total-1.
+        key_positions = torch.arange(
+            T_total,
+            device=x.device,
+        ).view(1, T_total)
+
+        # Query ở vị trí i chỉ được nhìn key có vị trí <= i.
+        causal_mask = key_positions <= query_positions
+        scores = scores.masked_fill(~causal_mask, float("-inf"))
+
+        weights = F.softmax(scores, dim=-1)
+
+        # (B, H, T_new, T_total) @ (B, H, T_total, D)
+        # -> (B, H, T_new, D)
+        y = weights @ v
+
+        # Ghép các head: (B, H, T_new, D) -> (B, T_new, C)
+        y = y.transpose(1, 2).contiguous().view(B, T_new, C)
+        y = self.resid_dropout(self.c_proj(y))
+
+        return y, present_kv
+```
+
+### Vì sao mask lại viết như vậy?
+
+Nếu cache đã có 2 token và lần này đưa vào 1 token mới:
+
+```text
+T_past  = 2
+T_new   = 1
+T_total = 3
+```
+
+Token mới có vị trí thật là `2`, nên được nhìn các key ở vị trí `0`, `1`, `2`:
+
+```text
+query_positions = [[2]]
+key_positions   = [[0, 1, 2]]
+causal_mask     = [[True, True, True]]
+```
+
+Nếu một lần đưa vào 2 token mới sau cache dài 2:
+
+```text
+query_positions = [[2],
+                   [3]]
+
+key_positions   = [[0, 1, 2, 3]]
+
+causal_mask     = [[True, True, True, False],
+                   [True, True, True, True ]]
+```
+
+Token ở vị trí 2 chưa được nhìn token tương lai ở vị trí 3.
+
+> Khi decode đúng một token, token đó chỉ gặp quá khứ và chính nó nên không có “tương lai” để che. Tuy nhiên, cách tạo mask tổng quát ở trên vẫn đúng khi `T_new > 1`.
 
 ---
