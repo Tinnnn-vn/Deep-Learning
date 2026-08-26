@@ -167,3 +167,46 @@ Xử lý riêng "on"    → dự đoán "the"
 Không phải đưa `sat` vào để dự đoán chính `sat`. Token đầu vào ở một bước được dùng để dự đoán token đứng **sau** nó.
 
 ---
+
+## 4. Nhắc lại vai trò của Q, K và V
+
+Trong một head attention, từ tensor đầu vào $X$, mô hình tạo ra:
+
+$$
+Q=XW_Q,\qquad K=XW_K,\qquad V=XW_V
+$$
+
+Sau đó:
+
+$$
+\{Attention}(Q,K,V)=
+\{softmax}\left(\frac{QK^T}{\sqrt{d_h}}+M\right)V
+$$
+
+Trong đó:
+
+- $Q$ — **Query**: token hiện tại đang tìm điều gì?
+- $K$ — **Key**: mỗi token có đặc điểm gì để được tìm thấy?
+- $V$ — **Value**: nếu token đó quan trọng thì lấy thông tin nào từ nó?
+- $d_h$ — số chiều của một attention head.
+- $M$ — causal mask, ngăn token nhìn thấy tương lai.
+
+Ví dụ câu:
+
+```text
+Con mèo uống sữa vì nó khát.
+```
+
+Khi xử lý từ `nó`, Query của `nó` có thể khớp mạnh với Key của `mèo`. Sau softmax, Value của `mèo` đóng góp nhiều hơn vào biểu diễn mới của `nó`.
+
+### Vì sao cache K và V mà không cache Q?
+
+Trong lúc decode, ta chỉ cần kết quả attention cho token mới nhất:
+
+- Q của token cũ đã hoàn thành nhiệm vụ ở bước cũ.
+- Q mới cần so sánh với tất cả K cũ.
+- Các V cũ vẫn cần thiết để tổng hợp thông tin.
+
+Vì vậy, mô hình lưu **K và V**, không cần giữ toàn bộ Q cũ.
+
+---
