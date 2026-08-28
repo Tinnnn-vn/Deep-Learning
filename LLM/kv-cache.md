@@ -493,3 +493,98 @@ Token ở vị trí 2 chưa được nhìn token tương lai ở vị trí 3.
 > Khi decode đúng một token, token đó chỉ gặp quá khứ và chính nó nên không có “tương lai” để che. Tuy nhiên, cách tạo mask tổng quát ở trên vẫn đúng khi `T_new > 1`.
 
 ---
+
+## 8. Cache của cả mô hình GPT
+
+Một GPT có nhiều Transformer block. **Mỗi block phải có cache riêng**, vì K/V tại tầng 1 khác K/V tại tầng 2.
+
+```text
+past_key_values = [
+    (K_tầng_0, V_tầng_0),
+    (K_tầng_1, V_tầng_1),
+    ...
+    (K_tầng_L-1, V_tầng_L-1),
+]
+```
+
+Luồng xử lý rút gọn:
+
+```python
+def forward(self, idx, past_key_values=None, use_cache=False):
+    if past_key_values is None:
+        past_key_values = [None] * len(self.blocks)
+
+    # Vị trí phải bắt đầu sau số token đã cache.
+    past_length = 0
+    if past_key_values[0] is not None:
+        past_length = past_key_values[0][0].size(-2)
+
+    positions = torch.arange(
+        past_length,
+        past_length + idx.size(1),
+        device=idx.device,
+    )
+
+    x = self.token_embedding(idx) + self.position_embedding(positions)
+    new_key_values = []
+
+    for block, layer_past in zip(self.blocks, past_key_values):
+        x, layer_present = block(
+            x,
+            past_kv=layer_past,
+            use_cache=use_cache,
+        )
+        new_key_values.append(layer_present)
+
+    logits = self.lm_head(self.final_norm(x))
+    return logits, new_key_values if use_cache else None
+```
+
+Vòng lặp sinh token:
+
+```python
+@torch.no_grad()
+def generate(model, prompt_ids, max_new_tokens):
+    model.eval()
+
+    # 1. Prefill: đưa toàn bộ prompt vào một lần.
+    logits, cache = model(
+        prompt_ids,
+        past_key_values=None,
+        use_cache=True,
+    )
+
+    all_ids = prompt_ids
+
+    for step in range(max_new_tokens):
+        # Logits cuối cùng dự đoán token kế tiếp.
+        next_token = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
+        all_ids = torch.cat([all_ids, next_token], dim=1)
+
+        # Token cuối đã được thêm vào kết quả, không cần chạy dư một vòng model.
+        if step == max_new_tokens - 1:
+            break
+
+        # 2. Decode: chỉ đưa token vừa sinh vào.
+        logits, cache = model(
+            next_token,
+            past_key_values=cache,
+            use_cache=True,
+        )
+
+    return all_ids
+```
+
+Đây là mã minh họa luồng dữ liệu. Để ghép vào một GPT hoàn chỉnh, lớp `Block` cũng cần nhận `past_kv`, gọi attention và trả `present_kv`.
+
+### Một chi tiết rất dễ quên: positional embedding
+
+Khi cache đã có 10 token, token mới không được nhận vị trí `0`; nó phải nhận vị trí `10`.
+
+```python
+position = past_length + local_position
+```
+
+Nếu luôn bắt đầu lại từ 0, mô hình sẽ hiểu sai thứ tự token dù K/V cache được nối đúng.
+
+---
