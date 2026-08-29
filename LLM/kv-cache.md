@@ -588,3 +588,51 @@ position = past_length + local_position
 Nếu luôn bắt đầu lại từ 0, mô hình sẽ hiểu sai thứ tự token dù K/V cache được nối đúng.
 
 ---
+
+## 9. KV Cache nhanh hơn bao nhiêu?
+
+Câu nói “KV Cache biến mọi thứ từ $O(T^2)$ thành $O(T)$” dễ nhớ nhưng chưa hoàn toàn chính xác.
+
+Giả sử sinh tổng cộng $T$ token:
+
+### Không có cache
+
+Mỗi vòng, mô hình xử lý lại chuỗi dài dần:
+
+$$
+1+2+3+\cdots+T=\frac{T(T+1)}{2}=O(T^2)
+$$
+
+Riêng việc tạo lại K/V và đi qua các tầng cho token cũ đã tăng bậc hai theo tổng số token.
+
+### Có cache
+
+Mỗi vòng chỉ tạo K/V cho một token mới. Tổng số phép chiếu K/V mới là:
+
+$$
+1+1+1+\cdots+1=T=O(T)
+$$
+
+Tuy nhiên, Query mới vẫn phải so sánh với toàn bộ Key trước đó:
+
+```text
+token 1: so với 1 key
+token 2: so với 2 key
+...
+token T: so với T key
+```
+
+Vì vậy, tổng phần dot-product attention qua cả quá trình decode vẫn có thành phần $O(T^2)$. KV Cache **không làm attention trở thành miễn phí**.
+
+| Thành phần khi sinh `T` token   |        Không cache |            Có KV Cache |
+| ------------------------------- | -----------------: | ---------------------: |
+| Tính lại biểu diễn/K/V token cũ |           $O(T^2)$ |                Loại bỏ |
+| Tính K/V mới                    | Gộp trong phần lặp |                 $O(T)$ |
+| Q mới so với lịch sử K          | $O(T^2)$ tổng cộng | Vẫn $O(T^2)$ tổng cộng |
+| Tốc độ thực tế                  |               Chậm |       Nhanh hơn rõ rệt |
+
+Kết luận chính xác hơn:
+
+> KV Cache giảm rất nhiều phép tính lặp trong autoregressive decoding, đặc biệt là các phép chiếu và xử lý lại token cũ. Mỗi bước vẫn phải đọc cache ngày càng dài, nên thời gian và bộ nhớ vẫn tăng theo độ dài ngữ cảnh.
+
+---
