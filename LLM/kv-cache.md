@@ -636,3 +636,55 @@ Kết luận chính xác hơn:
 > KV Cache giảm rất nhiều phép tính lặp trong autoregressive decoding, đặc biệt là các phép chiếu và xử lý lại token cũ. Mỗi bước vẫn phải đọc cache ngày càng dài, nên thời gian và bộ nhớ vẫn tăng theo độ dài ngữ cảnh.
 
 ---
+
+## 10. Cái giá phải trả: bộ nhớ
+
+Ta tiết kiệm phép tính bằng cách dùng thêm bộ nhớ GPU.
+
+Dung lượng KV Cache gần đúng:
+
+$$
+\text{bytes}=2\times L\times B\times H_{kv}\times T\times D\times s
+$$
+
+Trong đó:
+
+- `2`: có cả K và V;
+- $L$: số tầng Transformer;
+- $B$: batch size;
+- $H_{kv}$: số KV head;
+- $T$: số token trong cache;
+- $D$: kích thước mỗi head;
+- $s$: số byte mỗi phần tử, ví dụ FP16/BF16 thường là 2 byte.
+
+Ví dụ nhỏ:
+
+```text
+L = 12 tầng
+B = 1
+H_kv = 12
+T = 1024 token
+D = 64
+s = 2 byte
+```
+
+Ta cần khoảng:
+
+$$
+2\times12\times1\times12\times1024\times64\times2
+=37{,}748{,}736\text{ byte}\approx36\text{ MiB}
+$$
+
+Nếu batch lớn hơn, context dài hơn hoặc mô hình có nhiều tầng hơn, cache có thể chiếm hàng GB. Vì vậy các hệ thống phục vụ LLM phải quản lý cache rất cẩn thận.
+
+### Khi context vượt giới hạn
+
+Không thể nối cache mãi mãi nếu mô hình chỉ hỗ trợ một độ dài ngữ cảnh hữu hạn. Một số lựa chọn thường gặp:
+
+- dừng khi đạt giới hạn;
+- bỏ bớt token cũ bằng sliding window;
+- tóm tắt lịch sử rồi tạo context mới;
+- dùng kiến trúc hoặc kỹ thuật quản lý cache chuyên biệt.
+
+---
+
