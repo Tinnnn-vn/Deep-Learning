@@ -681,10 +681,82 @@ Nếu batch lớn hơn, context dài hơn hoặc mô hình có nhiều tầng h�
 
 Không thể nối cache mãi mãi nếu mô hình chỉ hỗ trợ một độ dài ngữ cảnh hữu hạn. Một số lựa chọn thường gặp:
 
-- dừng khi đạt giới hạn;
-- bỏ bớt token cũ bằng sliding window;
-- tóm tắt lịch sử rồi tạo context mới;
-- dùng kiến trúc hoặc kỹ thuật quản lý cache chuyên biệt.
+- Dừng khi đạt giới hạn;
+- Bỏ bớt token cũ bằng sliding window;
+- Tóm tắt lịch sử rồi tạo context mới;
+- Dùng kiến trúc hoặc kỹ thuật quản lý cache chuyên biệt.
 
 ---
 
+## 11. Các lỗi thường gặp
+
+### Lỗi 1: Vẫn đưa toàn bộ chuỗi vào khi đã có cache
+
+Sai:
+
+```python
+logits, cache = model(all_ids, past_key_values=cache)
+```
+
+Nếu `all_ids` chứa cả token cũ, bạn có thể nối trùng K/V và làm cache phình sai.
+
+Đúng trong decode thông thường:
+
+```python
+logits, cache = model(next_token, past_key_values=cache)
+```
+
+### Lỗi 2: Dùng chung một cache cho mọi tầng
+
+Mỗi tầng tạo K/V từ hidden state khác nhau. Cache phải là một danh sách gồm một cặp `(K, V)` cho từng tầng.
+
+### Lỗi 3: Nối sai chiều
+
+Với shape `(B, H, T, D)`, chiều token là `-2`:
+
+```python
+torch.cat([past_k, new_k], dim=-2)
+```
+
+### Lỗi 4: Quên offset của vị trí
+
+Token mới phải dùng vị trí tiếp nối `past_length`, không được quay lại vị trí 0.
+
+### Lỗi 5: Causal mask sai hàng
+
+Query mới ở vị trí toàn cục `T_past`, không phải vị trí 0 của cả câu. Mask phải xét vị trí toàn cục đó.
+
+### Lỗi 6: Cache trong lúc training mà không chủ ý
+
+KV Cache chủ yếu dùng cho **inference autoregressive**. Khi training teacher forcing, mô hình thường xử lý cả chuỗi song song; giữ cache giữa các batch vừa không cần thiết vừa có thể giữ computation graph, gây tốn bộ nhớ.
+
+### Lỗi 7: So sánh hai cách khi dropout còn bật
+
+Muốn kiểm tra kết quả có cache và không cache có giống nhau hay không, hãy dùng:
+
+```python
+model.eval()
+```
+
+Nếu dropout còn hoạt động, hai lần chạy có thể khác nhau dù cache được viết đúng.
+
+### Cách kiểm tra cài đặt
+
+Với cùng prompt và cùng model ở chế độ `eval()`:
+
+1. Chạy không cache và lấy logits cuối.
+2. Chạy prefill + decode có cache.
+3. So sánh bằng `torch.testing.assert_close`.
+
+```python
+torch.testing.assert_close(
+    logits_without_cache,
+    logits_with_cache,
+    rtol=1e-4,
+    atol=1e-5,
+)
+```
+
+Sai số rất nhỏ có thể xuất hiện do thứ tự phép toán dấu phẩy động hoặc kernel khác nhau.
+
+---
