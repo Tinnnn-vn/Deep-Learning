@@ -5,7 +5,7 @@ Trong mọi mô hình AI tiên tiến, trong mọi kịch bản huấn luyện h
 
 Nhưng tại sao?
 
-Dưới đây là toàn bộ bí mật: Adam không phải là một ý tưởng phức tạp duy nhất. Nó thực chất là sự kết hợp của ba ý tưởng đơn giản, được ghép lại với nhau để giải quyết ba vấn đề cụ thể.
+Dưới đây là toàn bộ bí mật: Adam không phải là một ý tưởng phức tạp. Nó thực chất là sự kết hợp của 3 ý tưởng đơn giản, được ghép lại với nhau để giải quyết 3 vấn đề cụ thể.
 ```
 # Adam Optimizer – Giải thích dễ hiểu từ con số 0
 
