@@ -883,4 +883,4 @@ Chúng ta đã xây dựng trực giác cho cuộc hội thoại này thông qua
 
 Mô-đun `CausalSelfAttention` này là thành phần quan trọng nhất trong các mô hình ngôn ngữ lớn hiện đại.
 
-Attention đã được giải thích đầy đủ.
+Tadaaa... Vậy là xong rồi, Attention đã được giải thích đầy đủ.
