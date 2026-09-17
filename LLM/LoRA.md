@@ -24,18 +24,18 @@
 
 ## 1. Bài toán mà LoRA giải quyết
 
-Hãy tưởng tượng một mô hình ngôn ngữ đã học được một **cuốn bách khoa toàn thư khổng lồ**. Bây giờ ta chỉ muốn dạy nó một kỹ năng nhỏ, chẳng hạn:
+Hãy tưởng tượng một mô hình ngôn ngữ (LLM) đã học được một **cuốn bách khoa toàn thư khổng lồ**. Bây giờ ta chỉ muốn dạy nó một kỹ năng nhỏ, chẳng hạn:
 
-- Trả lời theo phong cách chăm sóc khách hàng;
-- Phân loại phản hồi tích cực và tiêu cực;
-- Hiểu thuật ngữ của một công ty;
+- Trả lời theo phong cách chăm sóc khách hàng.
+- Phân loại phản hồi tích cực và tiêu cực.
+- Hiểu thuật ngữ của một công ty.
 - Viết câu trả lời theo một định dạng cố định.
 
-Nếu dùng **full fine-tuning**, ta cho phép gần như toàn bộ tham số của mô hình thay đổi. Cách này giống như in lại cả cuốn bách khoa chỉ để bổ sung vài trang hướng dẫn. Nó cần nhiều bộ nhớ GPU vì trong lúc huấn luyện, máy còn phải giữ gradient và trạng thái của optimizer cho rất nhiều tham số.
+Nếu dùng **full fine-tuning**, ta cho phép gần như toàn bộ tham số của mô hình thay đổi. Cách này giống như in lại cả cuốn bách khoa chỉ để bổ sung vài trang hướng dẫn. Nó sẽ tốn nhiều bộ nhớ GPU vì trong lúc huấn luyện, máy còn phải giữ gradient và trạng thái của optimizer cho rất nhiều tham số.
 
 LoRA chọn một cách thông minh hơn:
 
-> Giữ nguyên kiến thức cũ của mô hình và chỉ học một “bản vá” nhỏ mô tả cách mô hình cần thay đổi.
+> Giữ nguyên kiến thức cũ của mô hình và chỉ học thêm một “kiến thức nhỏ” mô tả cách mô hình cần thay đổi.
 
 LoRA là viết tắt của **Low-Rank Adaptation** — thích nghi bằng cập nhật hạng thấp. Đây là một kỹ thuật thuộc nhóm **PEFT** (*Parameter-Efficient Fine-Tuning*), nghĩa là fine-tune chỉ với một phần nhỏ tham số.
 
