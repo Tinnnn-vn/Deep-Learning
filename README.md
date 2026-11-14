@@ -1,4 +1,4 @@
-# Deep Learning Study Notes & Architecture Breakdown 🚀
+# Ghi chú học tập & Phân tích kiến ​​trúc Deep Learning 🚀 🚀
 
 Kho lưu trữ cá nhân tổng hợp kiến thức và phân tích chi tiết các kiến trúc mô hình trong **Deep Learning (DL)**.
 
